@@ -33,8 +33,14 @@
         </select>
       </label>
       <label><input id="neon" type="checkbox" /> 생물 네온</label>
-      <label for="neon-colors">네온 색상 · HEX
+      <label for="neon-colors">네온 색상 · HEX, 쉼표로 구분
         <input id="neon-colors" type="text" value="#65dfff" spellcheck="false" />
+      </label>
+      <label for="neon-mode">네온 표현
+        <select id="neon-mode">
+          <option value="cycle">부드러운 색상 전환</option>
+          <option value="gradient">생물별 그라데이션</option>
+        </select>
       </label>
       <p id="settings-status" role="status" aria-live="polite"></p>
     </details>

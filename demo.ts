@@ -8,12 +8,13 @@ const engine = new OceanEngine(document.querySelector("canvas")!, sharks);
 const glyphs = document.querySelector<HTMLSelectElement>("#glyphs")!;
 const neon = document.querySelector<HTMLInputElement>("#neon")!;
 const colors = document.querySelector<HTMLInputElement>("#neon-colors")!;
+const neonMode = document.querySelector<HTMLSelectElement>("#neon-mode")!;
 const status = document.querySelector<HTMLElement>("#settings-status")!;
 function updateAppearance() {
   try {
     engine.setOptions({
       glyphs: glyphs.value as GlyphMode,
-      neon: neon.checked ? { colors: colors.value.trim() } : false,
+      neon: neon.checked ? { colors: colors.value.split(",").map((c) => c.trim()), mode: neonMode.value as "cycle" | "gradient" } : false,
     });
     status.textContent = "";
     colors.setAttribute("aria-invalid", "false");
@@ -25,4 +26,5 @@ function updateAppearance() {
 glyphs.addEventListener("change", updateAppearance);
 neon.addEventListener("change", updateAppearance);
 colors.addEventListener("input", updateAppearance);
+neonMode.addEventListener("change", updateAppearance);
 window.addEventListener("pagehide", () => engine.destroy());

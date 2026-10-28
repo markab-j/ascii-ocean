@@ -9,3 +9,22 @@ export function parseHex(value: string): RGB {
   const full = hex.length === 3 ? [...hex].map((c) => c + c).join("") : hex;
   return [0, 2, 4].map((offset) => parseInt(full.slice(offset, offset + 2), 16)) as RGB;
 }
+import { clamp, smoothstep } from "./math";
+
+
+export function parseColors(value: string | string[]): RGB[] {
+  const colors = typeof value === "string" ? [value] : value;
+  if (!colors.length) throw new Error("At least one HEX colour is required");
+  return colors.map(parseHex);
+}
+
+export function paletteColor(colors: RGB[], position: number, loop = false): RGB {
+  if (!colors.length) throw new Error("A palette cannot be empty");
+  if (colors.length === 1) return colors[0];
+  const p = loop ? ((position % 1) + 1) % 1 : clamp(position, 0, 1);
+  const scaled = p * (loop ? colors.length : colors.length - 1);
+  const index = Math.min(Math.floor(scaled), colors.length - 1);
+  const next = loop ? (index + 1) % colors.length : Math.min(index + 1, colors.length - 1);
+  const mix = smoothstep(0, 1, scaled - index);
+  return colors[index].map((v, channel) => Math.round(v + (colors[next][channel] - v) * mix)) as RGB;
+}

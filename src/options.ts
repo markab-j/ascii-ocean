@@ -1,7 +1,9 @@
 export type GlyphMode = "ascii" | "hangul";
 
 export interface NeonOptions {
-  colors: string;
+  colors: string | string[];
+  /** cycle changes over time; gradient follows each creature's body. */
+  mode?: "cycle" | "gradient";
 }
 
 export interface OceanOptions {

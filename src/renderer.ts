@@ -9,7 +9,7 @@
 import { clamp, hash3, smoothstep } from "./math";
 import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
 import { bodyGlyph, type OceanOptions } from "./options";
-import { parseHex, type RGB } from "./lighting";
+import { paletteColor, parseColors, type RGB } from "./lighting";
 
 const ALPHA_LEVELS = 6;
 const FISH_ALPHAS = [0.28, 0.42, 0.58, 0.74, 0.9];
@@ -273,7 +273,8 @@ export class AsciiRenderer {
   private bg: HTMLCanvasElement;
   private glow: HTMLCanvasElement;
   private glowCtx: CanvasRenderingContext2D;
-  private neonColor: RGB | null = null;
+  private neonPalette: RGB[] | null = null;
+  private neonGradient: string[] = [];
   private dpr = 1;
   private width = 0;
   private height = 0;
@@ -299,6 +300,7 @@ export class AsciiRenderer {
   private sharkKey = new Uint32Array(0);
   private sharkDepth = new Float32Array(0);
   private sharkKind = new Uint8Array(0);
+  private sharkU = new Float32Array(0);
   /** Cells darkened by a shark's shadow on the seabed. */
   private sharkShadow = new Uint8Array(0);
   private spine = new Float32Array(SHARK_NODES * 2);
@@ -356,8 +358,14 @@ export class AsciiRenderer {
     if (options.glyphs !== undefined && options.glyphs !== "ascii" && options.glyphs !== "hangul") {
       throw new Error('glyphs must be "ascii" or "hangul"');
     }
-    const neonColor = options.neon === undefined ? this.neonColor : options.neon === false ? null : parseHex(options.neon.colors);
-    this.neonColor = neonColor;
+    if (options.neon && options.neon.mode !== undefined && options.neon.mode !== "cycle" && options.neon.mode !== "gradient") {
+      throw new Error('neon.mode must be "cycle" or "gradient"');
+    }
+    const palette = options.neon === undefined ? this.neonPalette : options.neon === false ? null : parseColors(options.neon.colors);
+    this.neonPalette = palette;
+    if (options.neon !== undefined) {
+      this.neonGradient = palette ? Array.from({ length: 32 }, (_, i) => `rgb(${paletteColor(palette, i / 31).join(",")})`) : [];
+    }
     this.options = { ...this.options, ...options };
   }
 
@@ -398,6 +406,7 @@ export class AsciiRenderer {
       this.sharkKey = new Uint32Array(n);
       this.sharkDepth = new Float32Array(n);
       this.sharkKind = new Uint8Array(n);
+      this.sharkU = new Float32Array(n);
       this.sharkShadow = new Uint8Array(n);
       this.fishStamp = new Uint32Array(n);
     }
@@ -438,7 +447,7 @@ export class AsciiRenderer {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     this.markFish(world);
-    this.drawNeon();
+    this.drawNeon(t);
     this.drawDots(t);
 
     ctx.font = `600 ${Math.round(ch * 0.74)}px ${this.fontFamily}`;
@@ -452,17 +461,21 @@ export class AsciiRenderer {
 
   // ── simulation → field ──────────────────────────────────────────────
 
-  private drawNeon() {
-    if (!this.neonColor) return;
+  private drawNeon(t: number) {
+    if (!this.neonPalette) return;
     const { glowCtx: g, cols, rows, cw, ch, ctx } = this;
     g.clearRect(0, 0, cols, rows);
-    g.fillStyle = `rgb(${this.neonColor.join(",")})`;
+    const gradient = this.options.neon && this.options.neon.mode === "gradient";
+    const cycle = `rgb(${paletteColor(this.neonPalette, t / 12, true).join(",")})`;
+    g.fillStyle = cycle;
     for (let i = 0; i < this.sharkFlag.length; i++) {
       if (!this.sharkFlag[i]) continue;
+      if (gradient) g.fillStyle = this.neonGradient[Math.round(clamp(this.sharkU[i], 0, 1) * 31)];
       g.globalAlpha = (0.35 + 0.4 * this.sharkDepth[i]) * (this.sharkFlag[i] === FLAG_EDGE ? 0.4 : 1);
       g.fillRect(i % cols, (i / cols) | 0, 1, 1);
     }
     for (let b = 0; b < this.fishBuckets.length; b++) {
+      g.fillStyle = gradient ? this.neonGradient[16] : cycle;
       g.globalAlpha = 0.12 + b * 0.04;
       for (const i of this.fishBuckets[b]) g.fillRect(i % cols, (i / cols) | 0, 1, 1);
     }
@@ -780,6 +793,7 @@ export class AsciiRenderer {
           sharkKey[i] = key;
           sharkDepth[i] = sh.depth;
           sharkKind[i] = kindIndex;
+          this.sharkU[i] = s;
 
           if (centerHit && coverage >= 0.6) {
             sharkFlag[i] = flag;
