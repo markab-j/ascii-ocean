@@ -53,18 +53,30 @@ test("calm and rough swells have visibly different propagation and intensity", (
     const waves = new WaveField();
     waves.setStyle(style, 0);
     waves.resize(1200, 800, 0);
-    const peak = (time: number, low: number, high: number) => {
+    const peak = (x: number, time: number, low: number, high: number) => {
       let best = { y: low, height: 0 };
       const out = empty();
       for (let y = low; y <= high; y++) {
-        const height = waves.sample(600, y, time, out).crest;
+        const height = waves.sample(x, y, time, out).crest;
         if (height > best.height) best = { y, height };
       }
       return best;
     };
-    const first = peak(0, 100, 650);
-    const second = peak(1, first.y - 10, first.y + 100);
-    return { speed: second.y - first.y, intensity: first.height };
+    let column = 600;
+    let first = { y: 100, height: 0 };
+    for (let x = 100; x <= 1100; x += 100) {
+      const candidate = peak(x, 0, 100, 650);
+      if (candidate.height > first.height) {
+        first = candidate;
+        column = x;
+      }
+    }
+    const second = peak(column, 1, first.y - 10, first.y + 100);
+    let quietColumns = 0;
+    for (let x = 40; x <= 1160; x += 20) {
+      if (peak(x, 0, first.y - 90, first.y + 90).height < 0.025) quietColumns++;
+    }
+    return { speed: second.y - first.y, intensity: first.height, quietColumns };
   };
   const classic = measure("classic");
   const calm = measure("calm");
@@ -75,6 +87,8 @@ test("calm and rough swells have visibly different propagation and intensity", (
   expect(calm.speed).toBeLessThan(classic.speed);
   expect(rough.speed).toBeGreaterThan(classic.speed);
   expect(rough.intensity).toBeGreaterThan(calm.intensity * 1.5);
+  expect(classic.quietColumns).toBe(0);
+  expect(calm.quietColumns).toBeGreaterThan(3);
 });
 
 test("wave styles are stable when reapplied and reject invalid input atomically", () => {

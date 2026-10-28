@@ -531,11 +531,13 @@ export class AsciiRenderer {
     if (!this.options.waves?.plankton) return;
     const { glowCtx: g, cols, rows, cw, ch, ctx, plankton } = this;
     const classic = this.options.waves.style === "classic";
+    const ink = this.light ? (classic ? "20,105,142" : "14,87,121") : "99,216,255";
     g.clearRect(0, 0, cols, rows);
     g.fillStyle = "#36bbff";
     for (let i = 0; i < plankton.length; i++) {
       if (plankton[i] < 0.04) continue;
-      g.globalAlpha = plankton[i] * 0.75;
+      const light = this.light && !classic ? Math.pow(plankton[i], 0.65) : plankton[i];
+      g.globalAlpha = light * 0.75;
       g.fillRect(i % cols, (i / cols) | 0, 1, 1);
     }
     g.globalAlpha = 1;
@@ -548,7 +550,8 @@ export class AsciiRenderer {
     for (let i = 0; i < plankton.length; i++) {
       const light = plankton[i];
       if (light < 0.09 || this.sharkFlag[i] || this.jellyFlag[i] || this.fishStamp[i] === this.frameId) continue;
-      ctx.fillStyle = `rgba(${this.light ? "20,105,142" : "99,216,255"},${(light * 0.8).toFixed(2)})`;
+      const visible = this.light && !classic ? Math.pow(light, 0.65) : light;
+      ctx.fillStyle = `rgba(${ink},${(visible * 0.8).toFixed(2)})`;
       const glyph = classic ? (light > 0.68 ? "*" : light > 0.35 ? ":" : "·") : light > 0.55 ? "~" : light > 0.28 ? ":" : "·";
       this.drawGlyph(glyph, (i % cols + 0.5) * cw, (((i / cols) | 0) + 0.5) * ch + 1, i, true);
     }

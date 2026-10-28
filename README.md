@@ -79,7 +79,7 @@ Blue bioluminescent plankton flash in patches as the crests pass, with a short a
 
 Choose the wave shape in the panel or with `waves.style`: `"calm"` (default) has slower, softer swells, `"rough"` has faster, stronger breaking fronts, and `"random"` varies each swell's speed, spacing, curvature, and strength. `"classic"` keeps the original narrow wave bands. Shape and direction are independent: random shapes can still travel in a fixed direction.
 
-The new shapes have a steeper advancing face, a broad fading back, and uneven glowing patches along their curved crests. Plankton light follows the swell with a soft afterglow rather than rapid independent blinking. Switching shapes clears the previous shape's light without reseeding the animals.
+The new shapes have a steeper advancing face, a broad fading back, and uneven glowing patches along their curved crests. Crests form finite groups with curling, fading ends and quiet water between them. Plankton light follows the swell with a soft afterglow rather than rapid independent blinking. Switching shapes clears the previous shape's light without reseeding the animals.
 
 Passing crests also cast a soft blue reflection on sharks, jellyfish, and tiny fish, while keeping their glyphs legible. Jellyfish motion and the light sample the same wave field. The effect is inspired by [flow-stimulated dinoflagellate bioluminescence](https://latzlab.ucsd.edu/bioluminescence/dinoflagellates/dinoflagellate-bioluminescence/).
 
