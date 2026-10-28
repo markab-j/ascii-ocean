@@ -10,7 +10,7 @@ import { clamp, hash3, smoothstep } from "./math";
 import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
 import { oceanGlyph, type OceanOptions, type OceanTheme } from "./options";
 import { paletteColor, parseColors, type RGB } from "./lighting";
-import type { Jellyfish } from "./jellyfish";
+import { jellyfishBell, type Jellyfish } from "./jellyfish";
 import { normalizeDirection, validateWaveStyle, type WaveSample } from "./waves";
 import { planktonLight } from "./plankton";
 
@@ -997,19 +997,18 @@ export class AsciiRenderer {
     const { cols, rows, cw, ch, jellyFlag, jellyShade, jellyKey, jellyU } = this;
     jellyFlag.fill(0);
     for (const j of jellyfish) {
-      const radius = j.radius * (1 - j.contraction * 0.18);
-      const cos = Math.cos(j.heading * 0.2);
-      const sin = Math.sin(j.heading * 0.2);
-      const c0 = Math.max(0, Math.floor((j.x - radius * 1.1) / cw));
-      const c1 = Math.min(cols - 1, Math.ceil((j.x + radius * 1.1) / cw));
-      const r0 = Math.max(0, Math.floor((j.y - radius) / ch));
-      const r1 = Math.min(rows - 1, Math.ceil((j.y + radius) / ch));
+      const { radius, height, dent, cos, sin } = jellyfishBell(j);
+      const bounds = Math.hypot(radius, height + dent) * 1.05;
+      const c0 = Math.max(0, Math.floor((j.x - bounds) / cw));
+      const c1 = Math.min(cols - 1, Math.ceil((j.x + bounds) / cw));
+      const r0 = Math.max(0, Math.floor((j.y - bounds) / ch));
+      const r1 = Math.min(rows - 1, Math.ceil((j.y + bounds) / ch));
       for (let r = r0; r <= r1; r++) {
         for (let c = c0; c <= c1; c++) {
           const dx = c * cw + cw / 2 - j.x;
           const dy = r * ch + ch / 2 - j.y;
           const u = (dx * cos + dy * sin) / radius;
-          const v = (-dx * sin + dy * cos) / (radius * (0.82 + j.tilt));
+          const v = (-dx * sin + dy * cos - dent * Math.max(0, 1 - u * u) ** 2) / height;
           const angle = Math.atan2(v, u);
           const radial = Math.hypot(u, v);
           const edge = 1 + Math.sin(angle * 16 + j.phase * 0.3) * 0.018 + Math.sin(angle) * j.turn * 0.08;
@@ -1019,7 +1018,8 @@ export class AsciiRenderer {
           const ring = Math.abs(markDistance - 0.155) < Math.max(0.045, cw / radius * 0.35);
           // Quiet space around the four gonads keeps Hangul from obscuring their shapes.
           jellyFlag[i] = radial > edge - 0.11 ? 2 : ring ? 3 : markDistance < 0.26 ? 5 : 1;
-          jellyShade[i] = clamp((0.4 + 0.6 * (1 - radial)) * j.depth, 0.2, 1);
+          const depression = 1 - j.compression * 0.5 * Math.exp(-radial * radial * 6);
+          jellyShade[i] = clamp((0.4 + 0.6 * (1 - radial)) * j.depth * depression, 0.2, 1);
           jellyKey[i] = (hash3(Math.round(u * 16), Math.round(v * 16), j.id) * 4294967295) >>> 0;
           jellyU[i] = clamp((u + 1) / 2, 0, 1);
         }

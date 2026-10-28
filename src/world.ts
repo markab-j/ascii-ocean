@@ -15,7 +15,7 @@
  */
 import { angleDiff, clamp, current, rand, randInt, TAU } from "./math";
 import { pickSpecies, SPECIES } from "./species";
-import { createJellyfish, stepJellyfish, type Jellyfish } from "./jellyfish";
+import { containsJellyfish, createJellyfish, pressJellyfish, stepJellyfish, type Jellyfish } from "./jellyfish";
 import { WaveField } from "./waves";
 
 export const SHARK_NODES = 20;
@@ -264,6 +264,13 @@ export class World {
   }
 
   splash(x: number, y: number) {
+    // Last drawn is on top; a gentle touch affects only that animal.
+    for (let i = this.jellyfish.length - 1; i >= 0; i--) {
+      const j = this.jellyfish[i];
+      if (!containsJellyfish(j, x, y)) continue;
+      pressJellyfish(j);
+      return;
+    }
     this.events.push({ kind: "splash", x, y });
     const r = 240;
     for (const f of this.fish) {

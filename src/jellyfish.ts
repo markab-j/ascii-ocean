@@ -15,6 +15,10 @@ export interface Jellyfish {
   heading: number;
   phase: number;
   contraction: number;
+  /** Click response: centre compression first, then delayed tentacle recoil. */
+  pressAge: number;
+  compression: number;
+  recoil: number;
   tilt: number;
   turn: number;
   initialized: boolean;
@@ -28,11 +32,39 @@ export function bellContraction(phase: number) {
   return p < 0.3 ? smoothstep(0, 0.3, p) : 1 - smoothstep(0.3, 1, p);
 }
 
+/** Shared geometry keeps the fringe, drawn bell, and pointer hit area together. */
+export function jellyfishBell(j: Jellyfish) {
+  const radius = j.radius * (1 - j.contraction * 0.18);
+  return {
+    radius,
+    height: radius * (0.82 + j.tilt) * (1 - j.compression * 0.18),
+    dent: radius * j.compression * 0.32,
+    cos: Math.cos(j.heading * 0.2),
+    sin: Math.sin(j.heading * 0.2),
+  };
+}
+
+export function containsJellyfish(j: Jellyfish, x: number, y: number) {
+  const { radius, height, dent, cos, sin } = jellyfishBell(j);
+  const dx = x - j.x;
+  const dy = y - j.y;
+  const u = (dx * cos + dy * sin) / radius;
+  const v = (-dx * sin + dy * cos - dent * Math.max(0, 1 - u * u) ** 2) / height;
+  const angle = Math.atan2(v, u);
+  const edge = 1 + Math.sin(angle * 16 + j.phase * 0.3) * 0.018 + Math.sin(angle) * j.turn * 0.08;
+  return Math.hypot(u, v) <= edge;
+}
+
+export function pressJellyfish(j: Jellyfish) {
+  j.pressAge = 0;
+}
+
 export function createJellyfish(id: number, x: number, y: number, radius: number, depth: number): Jellyfish {
   const phase = rand(0, TAU);
   return {
     id, x, y, radius, depth, vx: 0, vy: 0, driftX: 0, driftY: 0,
     heading: rand(-Math.PI, Math.PI), phase, contraction: bellContraction(phase),
+    pressAge: -1, compression: 0, recoil: 0,
     tilt: 0, turn: 0, initialized: false,
     tentacles: Array.from({ length: 16 }, () => new Float32Array(12)),
     tentaclePrev: Array.from({ length: 16 }, () => new Float32Array(12)),
@@ -43,6 +75,16 @@ const water = { x: 0, y: 0 };
 const wave: WaveSample = { crest: 0, flowX: 0, flowY: 0, lift: 0 };
 
 export function stepJellyfish(j: Jellyfish, dt: number, time: number, width: number, height: number, waves: WaveField) {
+  if (j.pressAge >= 0) {
+    j.pressAge += dt;
+    if (j.pressAge > 1.3) j.pressAge = -1;
+  }
+  const age = j.pressAge;
+  const compression = age < 0 ? 0 : smoothstep(0, 0.1, age) * (1 - smoothstep(0.16, 0.46, age));
+  const recoil = age < 0 ? 0 : smoothstep(0.18, 0.38, age) * (1 - smoothstep(0.48, 1.05, age));
+  const touchResponse = 1 - Math.exp(-dt * 18);
+  j.compression += (compression - j.compression) * touchResponse;
+  j.recoil += (recoil - j.recoil) * touchResponse;
   j.phase += dt * TAU / (2.7 + j.depth * 0.5);
   const before = j.contraction;
   j.contraction = bellContraction(j.phase);
@@ -72,16 +114,14 @@ export function stepJellyfish(j: Jellyfish, dt: number, time: number, width: num
   j.x = clamp(j.x + (j.vx + j.driftX) * dt, -j.radius, width + j.radius);
   j.y = clamp(j.y + (j.vy + j.driftY) * dt, -j.radius, height + j.radius);
 
-  const radius = j.radius * (1 - j.contraction * 0.18);
+  const { radius, height: bellHeight, dent, cos, sin } = jellyfishBell(j);
   const rotation = j.heading * 0.2;
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
   for (let k = 0; k < j.tentacles.length; k++) {
     const angle = k / j.tentacles.length * TAU;
     const nodes = j.tentacles[k];
     const previous = j.tentaclePrev[k];
     const localX = Math.cos(angle) * radius;
-    const localY = Math.sin(angle) * radius * (0.82 + j.tilt);
+    const localY = Math.sin(angle) * bellHeight + dent * Math.sin(angle) ** 4;
     const rootX = j.x + localX * cos - localY * sin;
     const rootY = j.y + localX * sin + localY * cos;
     const segment = j.radius * (0.29 + 0.06 * Math.sin(k * 2.7)) / (nodes.length / 2 - 1);
@@ -100,8 +140,9 @@ export function stepJellyfish(j: Jellyfish, dt: number, time: number, width: num
       const dx = clamp((px - previous[n]) * Math.exp(-dt * 5), -segment, segment);
       const dy = clamp((py - previous[n + 1]) * Math.exp(-dt * 5), -segment, segment);
       const flutter = Math.sin(j.phase - n * 0.4 + angle) * 5;
-      nodes[n] += dx + ((water.x + wave.flowX) * 1.8 - hx * thrust * 12 - hy * flutter) * dt * dt;
-      nodes[n + 1] += dy + ((water.y + wave.flowY) * 1.8 - hy * thrust * 12 + hx * flutter) * dt * dt;
+      const lift = j.recoil * j.radius * 24 * n / (nodes.length - 2);
+      nodes[n] += dx + ((water.x + wave.flowX) * 1.8 - hx * thrust * 12 - hy * flutter - (px - rootX) * j.recoil * 12) * dt * dt;
+      nodes[n + 1] += dy + ((water.y + wave.flowY) * 1.8 - hy * thrust * 12 + hx * flutter - lift) * dt * dt;
       previous[n] = px;
       previous[n + 1] = py;
     }

@@ -64,6 +64,8 @@ The demo's jellyfish-only preset has one large moon jellyfish beside a loose blo
 
 Moon jellyfish use asymmetric bell pulses, coasting, gradual turns, and damped short tentacles that respond to currents and shared surface waves. Passing waves carry the whole animal with a gently delayed drift, separately from its own swimming; a change in flow eases into the new direction. This is a lightweight visual simulation, informed by [research on moon-jellyfish swimming](https://pmc.ncbi.nlm.nih.gov/articles/PMC7980403/).
 
+Click or tap a jellyfish's bell to gently press its centre inward. The bell compresses first, then the short tentacles curl upward before settling back into swimming. Overlapping bells respond one at a time, with the frontmost jellyfish receiving the touch. Clicks on open water still scatter nearby fish. Interaction animation pauses with `prefers-reduced-motion`.
+
 ```ts
 engine.setOptions({ waves: { direction: 135 } });
 engine.setOptions({ waves: { direction: "random" } });
