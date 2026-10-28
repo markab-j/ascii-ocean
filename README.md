@@ -71,10 +71,13 @@ Angles are in degrees: 0 right, 90 down, 180 left, 270 up. Random direction is s
 
 ```ts
 engine.setOptions({ waves: { direction: "random", plankton: true } });
+engine.setOptions({ waves: { style: "rough" } });
 engine.setOptions({ waves: { plankton: false } });
 ```
 
 Blue bioluminescent plankton flash in patches as the crests pass, with a short afterglow inspired by *Noctiluca scintillans*. The plankton and creature-neon switches are independent and off by default.
+
+Choose the wave shape in the panel or with `waves.style`: `"calm"` (default) has slower, softer swells, `"rough"` has faster, stronger breaking fronts, and `"random"` varies each swell's speed, spacing, curvature, and strength. `"classic"` keeps the original narrow wave bands. Shape and direction are independent: random shapes can still travel in a fixed direction.
 
 Passing crests also cast a soft blue reflection on sharks, jellyfish, and tiny fish, while keeping their glyphs legible. Jellyfish motion and the light sample the same wave field. The effect is inspired by [flow-stimulated dinoflagellate bioluminescence](https://latzlab.ucsd.edu/bioluminescence/dinoflagellates/dinoflagellate-bioluminescence/).
 

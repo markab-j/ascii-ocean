@@ -1,4 +1,4 @@
-import { OceanEngine, isCreatureKind, type CreatureSpec, type GlyphMode } from "./src";
+import { OceanEngine, isCreatureKind, type CreatureSpec, type GlyphMode, type WaveStyle } from "./src";
 
 // ?sharks=thresher,hammerhead,mako,nurse — first is biggest, the rest step down. No param: four classics.
 const params = new URLSearchParams(location.search);
@@ -34,6 +34,7 @@ const removeColor = document.querySelector<HTMLButtonElement>("#remove-color")!;
 const palette = ["#65dfff"];
 const neonMode = document.querySelector<HTMLSelectElement>("#neon-mode")!;
 const waveDirection = document.querySelector<HTMLSelectElement>("#wave-direction")!;
+const waveStyle = document.querySelector<HTMLSelectElement>("#wave-style")!;
 const waveAngle = document.querySelector<HTMLInputElement>("#wave-angle")!;
 const angleValue = document.querySelector<HTMLOutputElement>("#wave-angle-value")!;
 const plankton = document.querySelector<HTMLInputElement>("#plankton")!;
@@ -44,6 +45,7 @@ function updateAppearance() {
       glyphs: glyphs.value as GlyphMode,
       neon: neon.checked ? { colors: [...palette], mode: neonMode.value as "cycle" | "gradient" } : false,
       waves: {
+        style: waveStyle.value as WaveStyle,
         direction: waveDirection.value === "random" ? "random" : waveDirection.value === "custom" ? waveAngle.valueAsNumber : Number(waveDirection.value),
         plankton: plankton.checked,
       },
@@ -87,6 +89,7 @@ removeColor.addEventListener("click", () => {
 glyphs.addEventListener("change", updateAppearance);
 neon.addEventListener("change", updateAppearance);
 neonMode.addEventListener("change", updateAppearance);
+waveStyle.addEventListener("change", updateAppearance);
 waveDirection.addEventListener("change", () => {
   if (waveDirection.value !== "custom" && waveDirection.value !== "random") waveAngle.value = waveDirection.value;
   updateAppearance();

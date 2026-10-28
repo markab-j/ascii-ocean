@@ -26,6 +26,7 @@ export class OceanEngine {
     this.renderer = new AsciiRenderer(canvas);
     this.renderer.setOptions(options);
     this.world.waves.setDirection(options.waves?.direction ?? 90, this.world.time);
+    this.world.waves.setStyle(options.waves?.style ?? "calm", this.world.time);
     this.renderer.setFontFamily(getComputedStyle(canvas).fontFamily);
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -68,6 +69,7 @@ export class OceanEngine {
     if (this.disposed) return;
     const layoutChanged = this.renderer.setOptions(options);
     if (options.waves?.direction !== undefined) this.world.waves.setDirection(options.waves.direction, this.world.time);
+    if (options.waves?.style !== undefined) this.world.waves.setStyle(options.waves.style, this.world.time);
     if (layoutChanged) this.resize();
     else if (this.reducedMotion.matches) this.drawStill();
   }

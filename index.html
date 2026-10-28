@@ -82,6 +82,12 @@
           <option value="gradient">그라데이션</option>
         </select>
       <label class="switch"><input id="plankton" type="checkbox" /> 플랑크톤</label>
+      <select id="wave-style" aria-label="파도 형태">
+        <option value="calm">잔잔한 파도</option>
+        <option value="rough">거친 파도</option>
+        <option value="random">랜덤 파도</option>
+        <option value="classic">기존 파도</option>
+      </select>
       <div class="direction-row">
         <select id="wave-direction" aria-label="물결 방향">
           <option value="90">아래</option>
@@ -89,7 +95,7 @@
           <option value="0">오른쪽</option>
           <option value="180">왼쪽</option>
           <option value="custom">직접</option>
-          <option value="random">랜덤</option>
+          <option value="random">랜덤 방향</option>
         </select>
         <output id="wave-angle-value" for="wave-angle">90°</output>
       </div>

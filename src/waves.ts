@@ -1,6 +1,13 @@
-import { TAU } from "./math";
+import { clamp, hash3, smoothstep, TAU } from "./math";
 
 export type WaveDirection = number | "random";
+export type WaveStyle = "classic" | "calm" | "rough" | "random";
+
+export function validateWaveStyle(style: WaveStyle) {
+  if (!["classic", "calm", "rough", "random"].includes(style)) {
+    throw new Error('Wave style must be "classic", "calm", "rough", or "random"');
+  }
+}
 
 export function normalizeDirection(direction: WaveDirection): WaveDirection {
   if (direction === "random") return direction;
@@ -23,6 +30,15 @@ interface WaveBand {
   dx: number;
   dy: number;
   span: number;
+  speed: number;
+  interval: number;
+  width: number;
+  strength: number;
+  bend: number;
+  scale: number;
+  flow: number;
+  reach: number;
+  classic: boolean;
 }
 
 const SPEED = 42;
@@ -36,12 +52,20 @@ export class WaveField {
   private next = 0;
   private serial = 0;
   private direction: WaveDirection = 90;
+  private style: WaveStyle = "calm";
+
+  setStyle(style: WaveStyle, time: number) {
+    validateWaveStyle(style);
+    if (style === this.style) return;
+    this.style = style;
+    if (this.width > 0 && this.height > 0) this.reset(time);
+  }
 
   setDirection(direction: WaveDirection, time: number) {
     const next = normalizeDirection(direction);
     if (next === this.direction) return;
     this.direction = next;
-    this.reset(time);
+    if (this.width > 0 && this.height > 0) this.reset(time);
   }
 
   resize(width: number, height: number, time: number) {
@@ -53,24 +77,58 @@ export class WaveField {
 
   private reset(time: number) {
     this.bands = [];
-    const count = Math.ceil((Math.hypot(this.width, this.height) + 240) / (SPEED * INTERVAL));
-    for (let n = count; n >= 0; n--) this.spawn(time - n * INTERVAL);
-    this.next = time + INTERVAL;
+    if (this.style === "classic") {
+      const count = Math.ceil((Math.hypot(this.width, this.height) + 240) / (SPEED * INTERVAL));
+      for (let n = count; n >= 0; n--) this.spawn(time - n * INTERVAL);
+      this.next = time + INTERVAL;
+    } else {
+      // Seed older swells so a newly selected style already fills the viewport.
+      const maxAge = (Math.hypot(this.width, this.height) + 900) / 20;
+      let born = time;
+      while (time - born < maxAge) {
+        const band = this.spawn(born);
+        if (born === time) this.next = time + band.interval;
+        born -= band.interval;
+      }
+    }
+    this.prune(time);
   }
 
   private spawn(born: number) {
+    const id = this.serial++;
+    const classic = this.style === "classic";
+    // Sample variation once per swell, never once per frame.
+    const roughness = this.style === "random" ? Math.random() : this.style === "rough" ? 1 : 0;
+    const variation = hash3(id, 23, 71) - 0.5;
+    const speed = classic ? SPEED : (28 + roughness * 36) * (1 + variation * 0.2);
+    const interval = classic ? INTERVAL : (12 - roughness * 5.5) * (1 + variation * 0.25);
+    const width = classic ? 22 : (42 + roughness * 20) * (1 + variation * 0.2);
+    const strength = classic ? 1 : 0.42 + roughness * 0.5;
+    const bend = 24 + roughness * 48;
+    const reach = classic ? 180 : width * 3 + bend;
     const angle = this.direction === "random" ? Math.random() * TAU : this.direction * Math.PI / 180;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
-    this.bands.push({ id: this.serial++, born, dx, dy, span: (Math.abs(dx) * this.width + Math.abs(dy) * this.height) / 2 + 100 });
+    const band: WaveBand = {
+      id, born, dx, dy, speed, interval, width, strength, bend, reach, classic,
+      scale: 240 - roughness * 110,
+      flow: 3.2 + roughness * 5.8,
+      span: (Math.abs(dx) * this.width + Math.abs(dy) * this.height) / 2 + (classic ? 100 : reach),
+    };
+    this.bands.push(band);
+    return band;
   }
 
   advance(time: number) {
     while (time >= this.next) {
-      this.spawn(this.next);
-      this.next += INTERVAL;
+      const band = this.spawn(this.next);
+      this.next += band.interval;
     }
-    this.bands = this.bands.filter((band) => (time - band.born) * SPEED < band.span * 2 + 140);
+    this.prune(time);
+  }
+
+  private prune(time: number) {
+    this.bands = this.bands.filter((band) => (time - band.born) * band.speed < band.span * 2 + (band.classic ? 140 : band.reach));
   }
 
   sample(x: number, y: number, time: number, out: WaveSample) {
@@ -79,17 +137,42 @@ export class WaveField {
     const py = y - this.height / 2;
     for (const band of this.bands) {
       const cross = -px * band.dy + py * band.dx;
-      const bend = Math.sin(cross / 180 + band.id * 1.7) * 20 + Math.sin(cross / 73 - time * 0.12) * 6;
-      const center = -band.span + (time - band.born) * SPEED;
+      const center = -band.span + (time - band.born) * band.speed;
+      // Skip distant swells before evaluating their curved fronts.
+      const along = px * band.dx + py * band.dy - center;
+      if (Math.abs(along) > band.reach + band.bend * 1.3) continue;
+      if (band.classic) {
+        const bend = Math.sin(cross / 180 + band.id * 1.7) * 20 + Math.sin(cross / 73 - time * 0.12) * 6;
+        const distance = along + bend;
+        if (Math.abs(distance) > 180) continue;
+        const envelope = Math.exp(-((distance / 66) ** 2));
+        const crest = Math.exp(-((distance / (22 + Math.sin(cross / 130 + band.id) * 4)) ** 2));
+        out.crest = Math.max(out.crest, crest);
+        const flow = Math.cos(distance / 70 * TAU * 0.2) * envelope * 8;
+        out.flowX += band.dx * flow;
+        out.flowY += band.dy * flow;
+        out.lift += Math.sin(distance / 65) * envelope;
+        continue;
+      }
+
+      const phase = band.id * 2.399;
+      const bend = Math.sin(cross / band.scale + phase) * band.bend
+        + Math.sin(cross / (band.scale * 0.43) - time * 0.14 + phase * 0.6) * band.bend * 0.24;
       const distance = px * band.dx + py * band.dy - center + bend;
-      if (Math.abs(distance) > 180) continue;
-      const envelope = Math.exp(-((distance / 66) ** 2));
-      const crest = Math.exp(-((distance / (22 + Math.sin(cross / 130 + band.id) * 4)) ** 2));
+      if (Math.abs(distance) > band.reach) continue;
+      // A steep advancing face rolls into a broad fading back, rather than a light bar.
+      const faceWidth = band.width * (distance > 0 ? 0.48 : 1.65);
+      const face = Math.exp(-((distance / faceWidth) ** 2));
+      const breaks = smoothstep(-0.6, 0.7, Math.sin(cross / (band.scale * 0.7) + phase)
+        + Math.sin(cross / (band.scale * 0.29) - time * 0.2 + phase) * 0.35);
+      const shoulder = Math.exp(-(((distance + band.width * 1.25) / (band.width * 0.8)) ** 2)) * 0.16;
+      const crest = clamp((face * (0.52 + breaks * 0.48) + shoulder) * band.strength, 0, 1);
       out.crest = Math.max(out.crest, crest);
-      const flow = Math.cos(distance / 70 * TAU * 0.2) * envelope * 8;
+      const envelope = Math.exp(-((distance / (band.width * 2.1)) ** 2));
+      const flow = Math.cos(distance / (band.width * 1.8)) * envelope * band.flow;
       out.flowX += band.dx * flow;
       out.flowY += band.dy * flow;
-      out.lift += Math.sin(distance / 65) * envelope;
+      out.lift += Math.sin(distance / (band.width * 1.6)) * envelope * band.strength;
     }
     return out;
   }

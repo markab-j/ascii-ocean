@@ -11,7 +11,7 @@ import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
 import { oceanGlyph, type OceanOptions, type OceanTheme } from "./options";
 import { paletteColor, parseColors, type RGB } from "./lighting";
 import type { Jellyfish } from "./jellyfish";
-import { normalizeDirection, type WaveSample } from "./waves";
+import { normalizeDirection, validateWaveStyle, type WaveSample } from "./waves";
 import { planktonLight } from "./plankton";
 
 const ALPHA_LEVELS = 6;
@@ -376,6 +376,7 @@ export class AsciiRenderer {
       throw new Error('theme must be "light" or "dark"');
     }
     if (options.waves?.direction !== undefined) normalizeDirection(options.waves.direction);
+    if (options.waves?.style !== undefined) validateWaveStyle(options.waves.style);
     if (options.glyphs !== undefined && options.glyphs !== "ascii" && options.glyphs !== "hangul") {
       throw new Error('glyphs must be "ascii" or "hangul"');
     }
