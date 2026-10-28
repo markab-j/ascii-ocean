@@ -22,8 +22,11 @@ t'                            ''XSSS8SSX%XX8#.    %XSX%
 
 Fish and sharks drawn as ASCII on a canvas. Zero dependencies.
 
+Requires Bun 1.4.4 (pinned in `.tool-versions`).
+
 ```sh
-npm install && npm run dev
+bun install
+bun run dev
 ```
 
 ```ts
