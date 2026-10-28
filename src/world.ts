@@ -206,11 +206,31 @@ export class World {
     // Smaller (farther) sharks draw first so the big one swims over them.
     this.sharks.sort((a, b) => a.length - b.length);
 
-    this.jellyfish = this.creatureSpecs.filter((spec) => spec.kind === "jellyfish").map((spec, i) => {
-      const j = createJellyfish(i + 101, rand(W * 0.2, W * 0.8), rand(H * 0.2, H * 0.8), baseLength * spec.size * 0.25, spec.size);
+    const jellySpecs = this.creatureSpecs.filter((spec) => spec.kind === "jellyfish");
+    const jellyOnly = sharkCount === 0 && jellySpecs.length > 1;
+    const largest = jellySpecs.reduce((best, spec, i) => spec.size > jellySpecs[best].size ? i : best, 0);
+    let smallIndex = 0;
+    this.jellyfish = jellySpecs.map((spec, i) => {
+      let x = rand(W * 0.2, W * 0.8);
+      let y = rand(H * 0.2, H * 0.8);
+      if (jellyOnly) {
+        if (i === largest) {
+          x = W * 0.76;
+          y = H * 0.52;
+        } else {
+          // A loose spiral keeps the small bloom distinct from the large individual.
+          const angle = smallIndex * 2.399;
+          const spread = minSide * 0.24 * Math.sqrt((smallIndex + 0.5) / (jellySpecs.length - 1));
+          x = W * 0.32 + Math.cos(angle) * spread;
+          y = H * 0.5 + Math.sin(angle) * spread * 0.85;
+          smallIndex++;
+        }
+      }
+      const j = createJellyfish(i + 101, x, y, baseLength * spec.size * 0.25, spec.size);
+      if (jellyOnly && i !== largest) j.heading = -Math.PI / 2 + rand(-0.18, 0.18);
       stepJellyfish(j, 1 / 60, this.time, W, H, this.waves);
       return j;
-    });
+    }).sort((a, b) => a.radius - b.radius);
 
     const total = this.fishCount ?? clamp(Math.round((W * H) / 4400), 85, 340);
     this.fish = [];

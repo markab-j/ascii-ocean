@@ -23,8 +23,9 @@ if (creatures) {
 }
 roster.addEventListener("change", () => {
   engine.setCreatures(roster.value === "custom" ? creatures : roster.value === "sharks" ? undefined : roster.value === "jellyfish"
-    ? [{ kind: "jellyfish", size: 1 }, { kind: "jellyfish", size: 0.7 }, { kind: "jellyfish", size: 0.5 }]
-    : [{ kind: "classic", size: 1 }, { kind: "hammerhead", size: 0.8 }, { kind: "jellyfish", size: 1 }, { kind: "jellyfish", size: 0.7 }]);
+    ? [1.2, 0.46, 0.38, 0.5, 0.42, 0.54, 0.4, 0.48, 0.36, 0.44].map((size) => ({ kind: "jellyfish", size }))
+    : [{ kind: "classic", size: 1 }, { kind: "hammerhead", size: 0.8 },
+      ...[1, 0.65, 0.5, 0.4].map((size): CreatureSpec => ({ kind: "jellyfish", size }))]);
 });
 const glyphs = document.querySelector<HTMLSelectElement>("#glyphs")!;
 const neon = document.querySelector<HTMLInputElement>("#neon")!;

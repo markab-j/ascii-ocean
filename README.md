@@ -60,6 +60,8 @@ const engine = new OceanEngine(canvas, [
 
 The demo supports `?creatures=jellyfish,hammerhead` and the original `?sharks=...` URL. `engine.setCreatures([...])` changes the roster and reseeds the ecosystem.
 
+The demo's jellyfish-only preset has one large moon jellyfish beside a loose bloom of nine smaller ones; the mixed preset includes four jellyfish. Jellyfish-only rosters start the smaller animals together with similar headings, while keeping the largest separate. Explicit API rosters keep exactly the number of creatures you specify.
+
 Moon jellyfish use asymmetric bell pulses, coasting, gradual turns, and damped short tentacles that respond to currents and shared surface waves. Passing waves carry the whole animal with a gently delayed drift, separately from its own swimming; a change in flow eases into the new direction. This is a lightweight visual simulation, informed by [research on moon-jellyfish swimming](https://pmc.ncbi.nlm.nih.gov/articles/PMC7980403/).
 
 ```ts

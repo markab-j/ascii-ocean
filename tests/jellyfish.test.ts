@@ -65,10 +65,30 @@ test("tentacle constraints remain bounded during sustained swimming and resize",
   const j = world.jellyfish[0];
   for (let k = 0; k < j.tentacles.length; k++) {
     const nodes = j.tentacles[k];
-    const segment = j.radius * (0.38 + 0.08 * Math.sin(k * 2.7)) / (nodes.length / 2 - 1);
+    let length = 0;
     for (let n = 2; n < nodes.length; n += 2) {
-      expect(Math.hypot(nodes[n] - nodes[n - 2], nodes[n + 1] - nodes[n - 1])).toBeLessThan(segment * 1.15);
+      length += Math.hypot(nodes[n] - nodes[n - 2], nodes[n + 1] - nodes[n - 1]);
     }
+    expect(length).toBeGreaterThan(j.radius * 0.2);
+    expect(length).toBeLessThan(j.radius * 0.37);
   }
   expect(Number.isFinite(j.tilt)).toBe(true);
+});
+
+test("jellyfish-only rosters form a small bloom beside one large individual", () => {
+  for (const [width, height] of [[1200, 800], [390, 568]]) {
+    const specs = [0.46, 0.38, 1.2, 0.5, 0.42, 0.54, 0.4, 0.48, 0.36, 0.44];
+    const world = new World(specs.map((size) => ({ kind: "jellyfish", size })), 0);
+    world.resize(width, height, 10, 15);
+    expect(world.sharks).toHaveLength(0);
+    expect(world.jellyfish).toHaveLength(specs.length);
+    const large = world.jellyfish.at(-1)!;
+    const small = world.jellyfish.slice(0, -1);
+    expect(large.radius).toBeGreaterThan(Math.max(...small.map((j) => j.radius)) * 2);
+    for (const j of small) {
+      expect(Math.hypot(j.x - width * 0.32, j.y - height * 0.5)).toBeLessThan(Math.min(width, height) * 0.25);
+      expect(Math.abs(j.heading + Math.PI / 2)).toBeLessThan(0.2);
+    }
+    expect(large.x).toBeGreaterThan(width * 0.7);
+  }
 });

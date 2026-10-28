@@ -84,7 +84,7 @@ export function stepJellyfish(j: Jellyfish, dt: number, time: number, width: num
     const localY = Math.sin(angle) * radius * (0.82 + j.tilt);
     const rootX = j.x + localX * cos - localY * sin;
     const rootY = j.y + localX * sin + localY * cos;
-    const segment = j.radius * (0.38 + 0.08 * Math.sin(k * 2.7)) / (nodes.length / 2 - 1);
+    const segment = j.radius * (0.29 + 0.06 * Math.sin(k * 2.7)) / (nodes.length / 2 - 1);
     if (!j.initialized) {
       for (let n = 0; n < nodes.length / 2; n++) {
         nodes[n * 2] = previous[n * 2] = rootX + Math.cos(angle + rotation) * segment * n;
