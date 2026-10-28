@@ -385,12 +385,17 @@ export class AsciiRenderer {
     }
     const layoutChanged = (options.glyphs ?? this.options.glyphs ?? "ascii") !== (this.options.glyphs ?? "ascii");
     const themeChanged = options.theme !== undefined && options.theme !== this.options.theme;
+    const styleChanged = options.waves?.style !== undefined && options.waves.style !== (this.options.waves?.style ?? "calm");
     const palette = options.neon === undefined ? this.neonPalette : options.neon === false ? null : parseColors(options.neon.colors);
     this.neonPalette = palette;
     if (options.neon !== undefined) {
       this.neonGradient = palette ? Array.from({ length: 32 }, (_, i) => `rgb(${paletteColor(palette, i / 31).join(",")})`) : [];
     }
     this.options = { ...this.options, ...options, waves: { ...this.options.waves, ...options.waves } };
+    if (styleChanged) {
+      this.plankton.fill(0);
+      this.surfaceLight.fill(0);
+    }
     if (themeChanged || !this.dotStyles.length) this.updateColors();
     if (themeChanged && this.width > 0) this.paintBackground();
     return layoutChanged;
@@ -510,18 +515,22 @@ export class AsciiRenderer {
       this.surfaceLight.fill(0);
       return;
     }
+    const style = this.options.waves.style ?? "calm";
+    const decay = Math.exp(-dt * (style === "classic" ? 4 : 2.6));
     for (let i = 0; i < this.plankton.length; i++) {
       const col = i % this.cols;
       const row = (i / this.cols) | 0;
       const sample = world.waves.sample((col + 0.5) * this.cw, (row + 0.5) * this.ch, world.time, this.waveSample);
-      this.plankton[i] = planktonLight(this.plankton[i], sample.crest, col, row, world.time, dt);
-      this.surfaceLight[i] = Math.max(this.surfaceLight[i] * Math.exp(-dt * 4), sample.crest * (0.6 + hash3(col >> 2, row >> 2, 57) * 0.4));
+      this.plankton[i] = planktonLight(this.plankton[i], sample.crest, col, row, world.time, dt, style);
+      const caustic = style === "classic" ? 0.6 + hash3(col >> 2, row >> 2, 57) * 0.4 : 0.8 + Math.sin(col * 0.18 + row * 0.07 - world.time * 0.4) * 0.2;
+      this.surfaceLight[i] = Math.max(this.surfaceLight[i] * decay, sample.crest * caustic);
     }
   }
 
   private drawPlankton() {
     if (!this.options.waves?.plankton) return;
     const { glowCtx: g, cols, rows, cw, ch, ctx, plankton } = this;
+    const classic = this.options.waves.style === "classic";
     g.clearRect(0, 0, cols, rows);
     g.fillStyle = "#36bbff";
     for (let i = 0; i < plankton.length; i++) {
@@ -540,7 +549,8 @@ export class AsciiRenderer {
       const light = plankton[i];
       if (light < 0.09 || this.sharkFlag[i] || this.jellyFlag[i] || this.fishStamp[i] === this.frameId) continue;
       ctx.fillStyle = `rgba(${this.light ? "20,105,142" : "99,216,255"},${(light * 0.8).toFixed(2)})`;
-      this.drawGlyph(light > 0.68 ? "*" : light > 0.35 ? ":" : "·", (i % cols + 0.5) * cw, (((i / cols) | 0) + 0.5) * ch + 1, i, true);
+      const glyph = classic ? (light > 0.68 ? "*" : light > 0.35 ? ":" : "·") : light > 0.55 ? "~" : light > 0.28 ? ":" : "·";
+      this.drawGlyph(glyph, (i % cols + 0.5) * cw, (((i / cols) | 0) + 0.5) * ch + 1, i, true);
     }
   }
 
