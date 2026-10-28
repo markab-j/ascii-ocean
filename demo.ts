@@ -6,6 +6,15 @@ const kinds = (params.get("creatures") ?? params.get("sharks"))?.split(",").filt
 const creatures: CreatureSpec[] | undefined = kinds?.map((kind, i) => ({ kind, size: Math.max(0.35, 1 - i * 0.1) }));
 
 const engine = new OceanEngine(document.querySelector("canvas")!, creatures);
+const theme = document.querySelector<HTMLButtonElement>("#theme")!;
+theme.addEventListener("click", () => {
+  const light = document.documentElement.dataset.theme !== "light";
+  engine.setOptions({ theme: light ? "light" : "dark" });
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  theme.textContent = light ? "다크" : "라이트";
+  theme.setAttribute("aria-label", light ? "다크 모드로 전환" : "라이트 모드로 전환");
+  theme.setAttribute("aria-pressed", String(light));
+});
 const roster = document.querySelector<HTMLSelectElement>("#creatures")!;
 if (creatures) {
   const custom = new Option("URL 설정 · 사용자 지정", "custom");

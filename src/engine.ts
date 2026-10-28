@@ -66,9 +66,10 @@ export class OceanEngine {
   /** Update appearance without restarting the simulation. */
   setOptions(options: OceanOptions) {
     if (this.disposed) return;
-    this.renderer.setOptions(options);
+    const layoutChanged = this.renderer.setOptions(options);
     if (options.waves?.direction !== undefined) this.world.waves.setDirection(options.waves.direction, this.world.time);
-    this.resize();
+    if (layoutChanged) this.resize();
+    else if (this.reducedMotion.matches) this.drawStill();
   }
 
   /** Changing the roster reseeds the ecosystem; appearance changes do not. */

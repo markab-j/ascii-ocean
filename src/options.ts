@@ -1,6 +1,7 @@
 import type { WaveDirection } from "./waves";
 
 export type GlyphMode = "ascii" | "hangul";
+export type OceanTheme = "dark" | "light";
 
 export interface NeonOptions {
   colors: string | string[];
@@ -9,6 +10,7 @@ export interface NeonOptions {
 }
 
 export interface OceanOptions {
+  theme?: OceanTheme;
   /** Hangul fills broad surfaces; narrow details keep their ASCII glyphs. */
   glyphs?: GlyphMode;
   /** Disabled by default. Glow follows each creature's silhouette. */

@@ -37,6 +37,7 @@ import { OceanEngine } from "./src";
 const engine = new OceanEngine(canvas, [{ kind: "hammerhead", size: 1 }]);
 
 // Appearance can change without restarting the simulation.
+engine.setOptions({ theme: "light" }); // "dark" (default) or "light"
 engine.setOptions({ glyphs: "hangul" }); // "ascii" (default) or "hangul"
 engine.setOptions({ neon: { colors: "#65dfff" } }); // #RGB or #RRGGBB
 engine.setOptions({ neon: false }); // off by default

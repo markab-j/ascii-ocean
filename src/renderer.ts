@@ -8,7 +8,7 @@
  */
 import { clamp, hash3, smoothstep } from "./math";
 import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
-import { bodyGlyph, type OceanOptions } from "./options";
+import { bodyGlyph, type OceanOptions, type OceanTheme } from "./options";
 import { paletteColor, parseColors, type RGB } from "./lighting";
 import type { Jellyfish } from "./jellyfish";
 import { normalizeDirection, type WaveSample } from "./waves";
@@ -253,9 +253,9 @@ function inTriangle(
 }
 
 /** Visible dark-grey cell grid, snapped to device pixels. Shared with the sidebar backdrop. */
-export function paintGrid(g: CanvasRenderingContext2D, W: number, H: number, cw: number, ch: number, dpr: number) {
+export function paintGrid(g: CanvasRenderingContext2D, W: number, H: number, cw: number, ch: number, dpr: number, theme: OceanTheme = "dark") {
   g.setTransform(1, 0, 0, 1, 0, 0);
-  g.strokeStyle = "rgba(255,255,255,0.055)";
+  g.strokeStyle = theme === "light" ? "rgba(24,57,70,0.09)" : "rgba(255,255,255,0.055)";
   g.lineWidth = 1;
   g.beginPath();
   for (let c = 0; c <= Math.ceil(W / cw); c++) {
@@ -343,8 +343,17 @@ export class AsciiRenderer {
     this.glowCtx = this.glow.getContext("2d")!;
     this.setOptions(options);
 
+  }
+
+  private get light() {
+    return this.options.theme === "light";
+  }
+
+  private updateColors() {
+    this.fishStyles = FISH_ALPHAS.map((a) => `rgba(${this.light ? "35,68,83" : "230,238,255"},${a})`);
+    this.dotStyles = [];
     for (let c = 0; c < DOT_RGB.length; c++) {
-      const [r, g, b] = DOT_RGB[c];
+      const [r, g, b] = this.light && c === WAKE ? [20, 113, 143] : DOT_RGB[c];
       for (let l = 0; l < ALPHA_LEVELS; l++) {
         const a = (DOT_BASE_ALPHA[c] * (l + 1)) / ALPHA_LEVELS;
         this.dotStyles.push(`rgba(${r},${g},${b},${a.toFixed(3)})`);
@@ -365,6 +374,9 @@ export class AsciiRenderer {
   }
 
   setOptions(options: OceanOptions) {
+    if (options.theme !== undefined && options.theme !== "light" && options.theme !== "dark") {
+      throw new Error('theme must be "light" or "dark"');
+    }
     if (options.waves?.direction !== undefined) normalizeDirection(options.waves.direction);
     if (options.glyphs !== undefined && options.glyphs !== "ascii" && options.glyphs !== "hangul") {
       throw new Error('glyphs must be "ascii" or "hangul"');
@@ -372,12 +384,17 @@ export class AsciiRenderer {
     if (options.neon && options.neon.mode !== undefined && options.neon.mode !== "cycle" && options.neon.mode !== "gradient") {
       throw new Error('neon.mode must be "cycle" or "gradient"');
     }
+    const layoutChanged = (options.glyphs ?? this.options.glyphs ?? "ascii") !== (this.options.glyphs ?? "ascii");
+    const themeChanged = options.theme !== undefined && options.theme !== this.options.theme;
     const palette = options.neon === undefined ? this.neonPalette : options.neon === false ? null : parseColors(options.neon.colors);
     this.neonPalette = palette;
     if (options.neon !== undefined) {
       this.neonGradient = palette ? Array.from({ length: 32 }, (_, i) => `rgb(${paletteColor(palette, i / 31).join(",")})`) : [];
     }
     this.options = { ...this.options, ...options, waves: { ...this.options.waves, ...options.waves } };
+    if (themeChanged || !this.dotStyles.length) this.updateColors();
+    if (themeChanged && this.width > 0) this.paintBackground();
+    return layoutChanged;
   }
 
   resize(width: number, height: number, dpr: number) {
@@ -444,9 +461,9 @@ export class AsciiRenderer {
     if (!g) return;
     const { width: W, height: H, dpr, cw, ch } = this;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.fillStyle = "#000";
+    g.fillStyle = this.light ? "#f1f5f4" : "#000";
     g.fillRect(0, 0, W, H);
-    paintGrid(g, W, H, cw, ch, dpr);
+    paintGrid(g, W, H, cw, ch, dpr, this.options.theme);
   }
 
   render(world: World, dt: number) {
@@ -510,7 +527,7 @@ export class AsciiRenderer {
     }
     g.globalAlpha = 1;
     ctx.save();
-    ctx.globalCompositeOperation = "screen";
+    ctx.globalCompositeOperation = this.light ? "multiply" : "screen";
     ctx.globalAlpha = 0.5;
     ctx.filter = `blur(${Math.round(cw * 0.9)}px)`;
     ctx.drawImage(this.glow, 0, 0, cols * cw, rows * ch);
@@ -518,7 +535,7 @@ export class AsciiRenderer {
     for (let i = 0; i < plankton.length; i++) {
       const light = plankton[i];
       if (light < 0.09 || this.sharkFlag[i] || this.jellyFlag[i] || this.fishStamp[i] === this.frameId) continue;
-      ctx.fillStyle = `rgba(99,216,255,${(light * 0.8).toFixed(2)})`;
+      ctx.fillStyle = `rgba(${this.light ? "20,105,142" : "99,216,255"},${(light * 0.8).toFixed(2)})`;
       ctx.fillText(light > 0.68 ? "*" : light > 0.35 ? ":" : "·", (i % cols + 0.5) * cw, (((i / cols) | 0) + 0.5) * ch + 1);
     }
   }
@@ -527,7 +544,7 @@ export class AsciiRenderer {
     if (!this.options.waves?.plankton) return;
     const { ctx, cols, cw, ch } = this;
     ctx.save();
-    ctx.globalCompositeOperation = "screen";
+    ctx.globalCompositeOperation = this.light ? "multiply" : "screen";
     ctx.fillStyle = "#69dfff";
     for (let i = 0; i < this.surfaceLight.length; i++) {
       const light = this.surfaceLight[i];
@@ -571,7 +588,7 @@ export class AsciiRenderer {
     }
     g.globalAlpha = 1;
     ctx.save();
-    ctx.globalCompositeOperation = "screen";
+    ctx.globalCompositeOperation = this.light ? "multiply" : "screen";
     ctx.globalAlpha = 0.5;
     ctx.filter = `blur(${Math.round(cw * 1.3)}px)`;
     ctx.drawImage(this.glow, 0, 0, cols * cw, rows * ch);
@@ -1037,10 +1054,10 @@ export class AsciiRenderer {
       let glyph = glyphs[key % glyphs.length];
       if (flag === 1) glyph = bodyGlyph(this.options.glyphs ?? "ascii", glyph, key);
       if (flag !== 4) {
-        ctx.fillStyle = `rgba(84,174,204,${0.06 + shade * 0.12})`;
+        ctx.fillStyle = `rgba(${this.light ? "29,99,119" : "84,174,204"},${0.06 + shade * 0.12})`;
         ctx.fillRect(x + 1, y + 1, cw - 1, ch - 1);
       }
-      ctx.fillStyle = flag === 3 ? "#f2d6ff" : `rgba(158,226,241,${(flag === 2 ? 0.65 : flag === 4 ? 0.4 : 0.22) + shade * 0.3})`;
+      ctx.fillStyle = flag === 3 ? (this.light ? "#74438e" : "#f2d6ff") : `rgba(${this.light ? "23,87,106" : "158,226,241"},${(flag === 2 ? 0.65 : flag === 4 ? 0.4 : 0.22) + shade * 0.3})`;
       ctx.fillText(glyph, x + cw / 2, y + ch / 2 + 1);
     }
   }

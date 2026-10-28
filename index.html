@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,14 +7,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@600&display=swap" rel="stylesheet" />
     <style>
-      html, body { margin: 0; height: 100%; background: #000; }
+      :root { color-scheme: dark; --page: #000; --panel: #071015ed; --ink: #d7e5e9; --muted: #8cabb6; --line: #36515e; --field: #101e26; --accent: #64d8e8; }
+      :root[data-theme="light"] { color-scheme: light; --page: #f1f5f4; --panel: #f1f5f4f5; --ink: #244451; --muted: #52707b; --line: #9bb0b6; --field: #e6edeb; --accent: #23768d; }
+      html, body { margin: 0; height: 100%; background: var(--page); }
       canvas { display: block; width: 100vw; height: 100vh; font-family: "Geist Mono", ui-monospace, Menlo, monospace; }
       * { box-sizing: border-box; }
-      .controls { position: fixed; z-index: 1; top: 20px; right: 20px; width: 260px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 20px; border: 1px solid #263a43; border-radius: 14px; background: #071015ed; color: #d7e5e9; font: 13px/1.5 system-ui, sans-serif; backdrop-filter: blur(14px); }
+      .controls { position: fixed; z-index: 1; top: 20px; right: 20px; width: 260px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); font: 13px/1.5 system-ui, sans-serif; backdrop-filter: blur(14px); }
       .controls summary { cursor: pointer; font-size: 16px; font-weight: 600; letter-spacing: .05em; }
-      .controls p { color: #8cabb6; font-size: 12px; }
+      .controls p { color: var(--muted); font-size: 12px; }
       .controls label { display: block; margin-top: 16px; }
-      .controls select, .controls input[type="text"], .controls input[type="number"] { display: block; width: 100%; margin-top: 6px; padding: 8px; border: 1px solid #36515e; border-radius: 6px; background: #101e26; color: #edfaff; font: inherit; }
+      .controls select, .controls button, .controls input[type="text"], .controls input[type="number"] { display: block; width: 100%; margin-top: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); color: var(--ink); font: inherit; }
       .controls input[type="checkbox"] { accent-color: #64d8e8; }
       .controls :focus-visible { outline: 2px solid #78e3f0; outline-offset: 3px; }
       .controls [role="status"] { color: #ffc3ad; }
@@ -25,6 +27,7 @@
     <canvas aria-hidden="true"></canvas>
     <details class="controls" open>
       <summary>ascii ocean</summary>
+      <button id="theme" type="button" aria-label="라이트 모드로 전환" aria-pressed="false">라이트</button>
       <p>빛과 글자로 만드는 작은 바다</p>
       <label for="creatures">생물 구성
         <select id="creatures">
