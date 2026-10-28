@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
-import { bellContraction } from "../src/jellyfish";
+import { bellContraction, createJellyfish, stepJellyfish } from "../src/jellyfish";
 import { TAU } from "../src/math";
 import { World } from "../src/world";
+import { WaveField } from "../src/waves";
 
 test("bell contraction has continuous cyclic endpoints and an asymmetric pulse", () => {
   expect(bellContraction(0)).toBeCloseTo(0);
@@ -12,6 +13,33 @@ test("bell contraction has continuous cyclic endpoints and an asymmetric pulse",
     expect(bellContraction(phase)).toBeGreaterThanOrEqual(0);
     expect(bellContraction(phase)).toBeLessThanOrEqual(1);
   }
+});
+
+test("waves carry jellyfish in their flow direction with inertia on reversal", () => {
+  const right = createJellyfish(101, 600, 450, 60, 1);
+  const left = structuredClone(right);
+  const waves = new WaveField();
+  let flow = 8;
+  waves.sample = (_x, _y, _time, out) => {
+    out.crest = 1;
+    out.flowX = flow;
+    out.flowY = out.lift = 0;
+    return out;
+  };
+  for (let i = 0; i < 360; i++) {
+    flow = 8;
+    stepJellyfish(right, 1 / 60, i / 60, 1200, 900, waves);
+    flow = -8;
+    stepJellyfish(left, 1 / 60, i / 60, 1200, 900, waves);
+  }
+  expect(right.x - left.x).toBeGreaterThan(80);
+  expect(right.driftX).toBeGreaterThan(12);
+  expect(left.driftX).toBeLessThan(-12);
+  flow = -8;
+  stepJellyfish(right, 1 / 60, 6, 1200, 900, waves);
+  expect(right.driftX).toBeGreaterThan(0);
+  for (let i = 1; i < 120; i++) stepJellyfish(right, 1 / 60, 6 + i / 60, 1200, 900, waves);
+  expect(right.driftX).toBeLessThan(0);
 });
 
 test("jellyfish share the roster without acquiring shark hunting behaviour", () => {

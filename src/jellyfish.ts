@@ -7,6 +7,9 @@ export interface Jellyfish {
   y: number;
   vx: number;
   vy: number;
+  /** Water-carried velocity, smoothed separately from the bell's own propulsion. */
+  driftX: number;
+  driftY: number;
   radius: number;
   depth: number;
   heading: number;
@@ -28,7 +31,7 @@ export function bellContraction(phase: number) {
 export function createJellyfish(id: number, x: number, y: number, radius: number, depth: number): Jellyfish {
   const phase = rand(0, TAU);
   return {
-    id, x, y, radius, depth, vx: 0, vy: 0,
+    id, x, y, radius, depth, vx: 0, vy: 0, driftX: 0, driftY: 0,
     heading: rand(-Math.PI, Math.PI), phase, contraction: bellContraction(phase),
     tilt: 0, turn: 0, initialized: false,
     tentacles: Array.from({ length: 16 }, () => new Float32Array(12)),
@@ -46,6 +49,9 @@ export function stepJellyfish(j: Jellyfish, dt: number, time: number, width: num
   const thrust = Math.max(0, j.contraction - before) / dt;
   waves.sample(j.x, j.y, time, wave);
   current(j.x, j.y, time, water);
+  const response = 1 - Math.exp(-dt * 1.7);
+  j.driftX += (wave.flowX * 2.2 - j.driftX) * response;
+  j.driftY += (wave.flowY * 2.2 - j.driftY) * response;
   const desired = Math.atan2(height / 2 - j.y, width / 2 - j.x);
   const edge = j.x < j.radius || j.x > width - j.radius || j.y < j.radius || j.y > height - j.radius;
   const steering = edge ? clamp(angleDiff(j.heading, desired), -0.3, 0.3) : Math.sin(time * 0.16 + j.id * 3) * 0.12;
@@ -55,16 +61,16 @@ export function stepJellyfish(j: Jellyfish, dt: number, time: number, width: num
   const hx = Math.cos(j.heading);
   const hy = Math.sin(j.heading);
   const margin = Math.min(j.radius * 1.5, width * 0.25, height * 0.25);
-  let ax = hx * thrust * 21 + (water.x + wave.flowX) * 0.55;
-  let ay = hy * thrust * 21 + (water.y + wave.flowY) * 0.55;
+  let ax = hx * thrust * 21 + water.x * 0.55;
+  let ay = hy * thrust * 21 + water.y * 0.55;
   if (j.x < margin) ax += (margin - j.x) * 0.7;
   if (j.x > width - margin) ax -= (j.x - width + margin) * 0.7;
   if (j.y < margin) ay += (margin - j.y) * 0.7;
   if (j.y > height - margin) ay -= (j.y - height + margin) * 0.7;
   j.vx = (j.vx + ax * dt) * Math.exp(-dt * 0.65);
   j.vy = (j.vy + ay * dt) * Math.exp(-dt * 0.65);
-  j.x = clamp(j.x + j.vx * dt, -j.radius, width + j.radius);
-  j.y = clamp(j.y + j.vy * dt, -j.radius, height + j.radius);
+  j.x = clamp(j.x + (j.vx + j.driftX) * dt, -j.radius, width + j.radius);
+  j.y = clamp(j.y + (j.vy + j.driftY) * dt, -j.radius, height + j.radius);
 
   const radius = j.radius * (1 - j.contraction * 0.18);
   const rotation = j.heading * 0.2;
