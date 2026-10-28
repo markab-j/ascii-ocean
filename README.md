@@ -66,4 +66,11 @@ engine.setOptions({ waves: { direction: "random" } });
 
 Angles are in degrees: 0 right, 90 down, 180 left, 270 up. Random direction is selected once per new wave; a wave keeps its direction while travelling.
 
+```ts
+engine.setOptions({ waves: { direction: "random", plankton: true } });
+engine.setOptions({ waves: { plankton: false } });
+```
+
+Blue bioluminescent plankton flash in patches as the crests pass, with a short afterglow inspired by *Noctiluca scintillans*. The plankton and creature-neon switches are independent and off by default.
+
 MIT

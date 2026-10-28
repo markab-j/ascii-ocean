@@ -16,6 +16,8 @@ export interface OceanOptions {
   waves?: {
     /** Degrees: 0 right, 90 down, 180 left, 270 up; random per new wave. */
     direction?: WaveDirection;
+    /** Wave-agitated blue plankton light, independent of creature neon. */
+    plankton?: boolean;
   };
 }
 

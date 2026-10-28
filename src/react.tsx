@@ -28,7 +28,7 @@ export function AsciiOcean({ className, sharks, creatures, options }: { classNam
   }, [creatures, sharks]);
 
   useEffect(() => {
-    engineRef.current?.setOptions({ glyphs: "ascii", neon: false, ...options, waves: { direction: 90, ...options?.waves } });
+    engineRef.current?.setOptions({ glyphs: "ascii", neon: false, ...options, waves: { direction: 90, plankton: false, ...options?.waves } });
   }, [options]);
 
   return <canvas ref={canvasRef} aria-hidden="true" className={`ascii-ocean ${className ?? ""}`} />;

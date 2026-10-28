@@ -11,7 +11,8 @@ import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
 import { bodyGlyph, type OceanOptions } from "./options";
 import { paletteColor, parseColors, type RGB } from "./lighting";
 import type { Jellyfish } from "./jellyfish";
-import { normalizeDirection } from "./waves";
+import { normalizeDirection, type WaveSample } from "./waves";
+import { planktonLight } from "./plankton";
 
 const ALPHA_LEVELS = 6;
 const FISH_ALPHAS = [0.28, 0.42, 0.58, 0.74, 0.9];
@@ -307,6 +308,8 @@ export class AsciiRenderer {
   private jellyShade = new Float32Array(0);
   private jellyKey = new Uint32Array(0);
   private jellyU = new Float32Array(0);
+  private plankton = new Float32Array(0);
+  private waveSample: WaveSample = { crest: 0, flowX: 0, flowY: 0, lift: 0 };
   /** Cells darkened by a shark's shadow on the seabed. */
   private sharkShadow = new Uint8Array(0);
   private spine = new Float32Array(SHARK_NODES * 2);
@@ -418,6 +421,7 @@ export class AsciiRenderer {
       this.jellyShade = new Float32Array(n);
       this.jellyKey = new Uint32Array(n);
       this.jellyU = new Float32Array(n);
+      this.plankton = new Float32Array(n);
       this.sharkShadow = new Uint8Array(n);
       this.fishStamp = new Uint32Array(n);
     }
@@ -453,18 +457,20 @@ export class AsciiRenderer {
     this.rasterizeJellyfish(world.jellyfish);
     this.depositWake(world);
     this.diffuse(dt);
+    this.updatePlankton(world, dt);
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.bg, 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    this.markFish(world);
-    this.drawNeon(t);
-    this.drawDots(t);
-
     ctx.font = `600 ${Math.round(ch * 0.74)}px ${this.fontFamily}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+
+    this.markFish(world);
+    this.drawNeon(t);
+    this.drawPlankton();
+    this.drawDots(t);
 
     this.drawHeat();
     this.drawFish();
@@ -473,6 +479,44 @@ export class AsciiRenderer {
   }
 
   // ── simulation → field ──────────────────────────────────────────────
+
+  private updatePlankton(world: World, dt: number) {
+    if (!this.options.waves?.plankton) {
+      this.plankton.fill(0);
+      return;
+    }
+    for (let i = 0; i < this.plankton.length; i++) {
+      const col = i % this.cols;
+      const row = (i / this.cols) | 0;
+      const sample = world.waves.sample((col + 0.5) * this.cw, (row + 0.5) * this.ch, world.time, this.waveSample);
+      this.plankton[i] = planktonLight(this.plankton[i], sample.crest, col, row, world.time, dt);
+    }
+  }
+
+  private drawPlankton() {
+    if (!this.options.waves?.plankton) return;
+    const { glowCtx: g, cols, rows, cw, ch, ctx, plankton } = this;
+    g.clearRect(0, 0, cols, rows);
+    g.fillStyle = "#36bbff";
+    for (let i = 0; i < plankton.length; i++) {
+      if (plankton[i] < 0.04) continue;
+      g.globalAlpha = plankton[i] * 0.75;
+      g.fillRect(i % cols, (i / cols) | 0, 1, 1);
+    }
+    g.globalAlpha = 1;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = 0.5;
+    ctx.filter = `blur(${Math.round(cw * 0.9)}px)`;
+    ctx.drawImage(this.glow, 0, 0, cols * cw, rows * ch);
+    ctx.restore();
+    for (let i = 0; i < plankton.length; i++) {
+      const light = plankton[i];
+      if (light < 0.09 || this.sharkFlag[i] || this.jellyFlag[i] || this.fishStamp[i] === this.frameId) continue;
+      ctx.fillStyle = `rgba(99,216,255,${(light * 0.8).toFixed(2)})`;
+      ctx.fillText(light > 0.68 ? "*" : light > 0.35 ? ":" : "·", (i % cols + 0.5) * cw, (((i / cols) | 0) + 0.5) * ch + 1);
+    }
+  }
 
   private drawNeon(t: number) {
     if (!this.neonPalette) return;

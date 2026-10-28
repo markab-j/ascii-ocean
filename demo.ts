@@ -23,6 +23,7 @@ const colors = document.querySelector<HTMLInputElement>("#neon-colors")!;
 const neonMode = document.querySelector<HTMLSelectElement>("#neon-mode")!;
 const waveDirection = document.querySelector<HTMLSelectElement>("#wave-direction")!;
 const waveAngle = document.querySelector<HTMLInputElement>("#wave-angle")!;
+const plankton = document.querySelector<HTMLInputElement>("#plankton")!;
 const status = document.querySelector<HTMLElement>("#settings-status")!;
 function updateAppearance() {
   try {
@@ -30,7 +31,10 @@ function updateAppearance() {
     engine.setOptions({
       glyphs: glyphs.value as GlyphMode,
       neon: neon.checked ? { colors: colors.value.split(",").map((c) => c.trim()), mode: neonMode.value as "cycle" | "gradient" } : false,
-      waves: { direction: waveDirection.value === "random" ? "random" : waveDirection.value === "custom" ? waveAngle.valueAsNumber : Number(waveDirection.value) },
+      waves: {
+        direction: waveDirection.value === "random" ? "random" : waveDirection.value === "custom" ? waveAngle.valueAsNumber : Number(waveDirection.value),
+        plankton: plankton.checked,
+      },
     });
     status.textContent = "";
     colors.setAttribute("aria-invalid", "false");
@@ -51,4 +55,5 @@ waveDirection.addEventListener("change", () => {
   updateAppearance();
 });
 waveAngle.addEventListener("input", updateAppearance);
+plankton.addEventListener("change", updateAppearance);
 window.addEventListener("pagehide", () => engine.destroy());
