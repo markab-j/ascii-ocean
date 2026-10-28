@@ -11,7 +11,7 @@ export interface NeonOptions {
 
 export interface OceanOptions {
   theme?: OceanTheme;
-  /** Hangul fills broad surfaces; narrow details keep their ASCII glyphs. */
+  /** Hangul uses syllables for surfaces and Korean jamo for every narrow detail. */
   glyphs?: GlyphMode;
   /** Disabled by default. Glow follows each creature's silhouette. */
   neon?: false | NeonOptions;
@@ -24,7 +24,13 @@ export interface OceanOptions {
 }
 
 const HANGUL = "가나다라물결바다빛파도한글";
+const JAMO: Record<string, string> = {
+  "-": "ㅡ", "|": "ㅣ", "/": "ㅅ", "\\": "ㄱ", "~": "ㄹ",
+  ".": "ㅇ", ",": "ㄴ", "·": "ㅇ", ":": "ㅣ", ";": "ㅏ",
+  "'": "ㅣ", "`": "ㄱ", "o": "ㅇ", "O": "ㅇ", "*": "ㅈ",
+};
 
-export function bodyGlyph(mode: GlyphMode, ascii: string, key: number) {
-  return mode === "hangul" ? HANGUL[(key >>> 8) % HANGUL.length] : ascii;
+export function oceanGlyph(mode: GlyphMode, ascii: string, key: number, detail = false) {
+  if (mode === "ascii") return ascii;
+  return detail ? JAMO[ascii] ?? "ㄴㄱㅅㅣㅡ"[key % 5] : HANGUL[(key >>> 8) % HANGUL.length];
 }

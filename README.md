@@ -45,7 +45,7 @@ engine.setOptions({ neon: { colors: ["#65dfff", "#b581ff", "#ff83bf"], mode: "gr
 // mode: "cycle" (default) smoothly loops through the colours over time.
 ```
 
-The demo's control panel also switches between ASCII and Hangul. Narrow fins, edges, and tiny fish keep ASCII details so the silhouette stays readable.
+The demo's control panel switches between ASCII and Hangul. Hangul mode uses **only Korean characters** throughout the canvas: syllables for broad surfaces and jamo such as `ㅡ`, `ㅣ`, `ㄴ`, `ㄱ`, `ㅇ` for fins, edges, fish, tentacles, and particles. Shark glyph colours stay steady; colour cycling belongs to the optional neon layer.
 
 Mix sharks and moon jellyfish in the same roster:
 
