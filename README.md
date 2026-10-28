@@ -47,6 +47,8 @@ engine.setOptions({ neon: { colors: ["#65dfff", "#b581ff", "#ff83bf"], mode: "gr
 
 The demo's control panel switches between ASCII and Hangul. Hangul mode uses **only Korean characters** throughout the canvas: syllables for broad surfaces and jamo such as `ㅡ`, `ㅣ`, `ㄴ`, `ㄱ`, `ㅇ` for fins, edges, fish, tentacles, and particles. Shark glyph colours stay steady; colour cycling belongs to the optional neon layer.
 
+The panel uses the canvas's monospace style and square borders. Switch light/dark themes with its theme button, pick neon colours using the swatches (`[+]` / `[-]` adds or removes a colour), and drag the 0–360° wave slider. Dragging selects a manual angle, including when leaving random mode. Controls retain accessible names without repeated visible labels.
+
 Mix sharks and moon jellyfish in the same roster:
 
 ```ts

@@ -12,61 +12,82 @@
       html, body { margin: 0; height: 100%; background: var(--page); }
       canvas { display: block; width: 100vw; height: 100vh; font-family: "Geist Mono", ui-monospace, Menlo, monospace; }
       * { box-sizing: border-box; }
-      .controls { position: fixed; z-index: 1; top: 20px; right: 20px; width: 260px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); font: 13px/1.5 system-ui, sans-serif; backdrop-filter: blur(14px); }
-      .controls summary { cursor: pointer; font-size: 16px; font-weight: 600; letter-spacing: .05em; }
-      .controls p { color: var(--muted); font-size: 12px; }
-      .controls label { display: block; margin-top: 16px; }
-      .controls select, .controls button, .controls input[type="text"], .controls input[type="number"] { display: block; width: 100%; margin-top: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); color: var(--ink); font: inherit; }
-      .controls input[type="checkbox"] { accent-color: #64d8e8; }
-      .controls :focus-visible { outline: 2px solid #78e3f0; outline-offset: 3px; }
-      .controls [role="status"] { color: #ffc3ad; }
-      @media (max-width: 600px) { .controls { top: 16px; right: 16px; padding: 14px; } }
+      .controls { position: fixed; z-index: 1; top: 20px; right: 20px; width: 280px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 40px); overflow-y: auto; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 12px/1.6 "Geist Mono", ui-monospace, Menlo, monospace; }
+      .controls summary { cursor: pointer; padding: 10px 12px; list-style: none; letter-spacing: .04em; }
+      .controls summary::-webkit-details-marker { display: none; }
+      .controls summary::before { content: "[+] "; color: var(--muted); }
+      .controls[open] summary::before { content: "[-] "; }
+      .controls[open] summary { border-bottom: 1px dashed var(--line); }
+      .panel-body { padding: 12px; }
+      .compact-row, .direction-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+      .controls select { display: block; width: 100%; min-width: 0; padding: 7px; border: 1px solid var(--line); border-radius: 0; background: var(--field); color: var(--ink); font: inherit; }
+      .compact-row select, .direction-row select { flex: 1; }
+      .controls button { flex: none; min-height: 32px; padding: 4px; border: 0; background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
+      .controls button:hover { color: var(--ink); }
+      .controls button:disabled { opacity: .35; cursor: default; }
+      .switch { display: flex; align-items: center; gap: 8px; margin: 16px 0 8px; padding-top: 12px; border-top: 1px dashed var(--line); }
+      .switch input { appearance: none; position: relative; width: 14px; height: 14px; margin: 0; border: 1px solid var(--line); border-radius: 0; cursor: pointer; }
+      .switch input:checked::after { content: "x"; position: absolute; inset: -4px 0 0; color: var(--accent); text-align: center; font-size: 14px; }
+      .palette-row, .palette { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+      .palette-row { margin-bottom: 8px; }
+      .controls input[type="color"] { width: 30px; height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: 0; background: transparent; cursor: pointer; }
+      .controls input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+      .controls input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 0; }
+      .controls input[type="color"]::-moz-color-swatch { border: 0; border-radius: 0; }
+      .controls output { flex: none; min-width: 44px; color: var(--muted); text-align: right; }
+      .controls input[type="range"] { appearance: none; display: block; width: 100%; height: 28px; margin: 6px 0 0; background: transparent; cursor: ew-resize; }
+      .controls input[type="range"]::-webkit-slider-runnable-track { height: 1px; background: var(--line); }
+      .controls input[type="range"]::-webkit-slider-thumb { appearance: none; width: 10px; height: 16px; margin-top: -7px; border: 1px solid var(--ink); border-radius: 0; background: var(--accent); }
+      .controls input[type="range"]::-moz-range-track { height: 1px; background: var(--line); }
+      .controls input[type="range"]::-moz-range-thumb { width: 10px; height: 16px; border: 1px solid var(--ink); border-radius: 0; background: var(--accent); }
+      .controls :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+      .controls [role="status"] { margin: 8px 0 0; color: var(--ink); }
+      .controls [role="status"]:empty { display: none; }
+      @media (max-width: 600px) { .controls { top: 16px; right: 16px; } }
     </style>
   </head>
   <body>
     <canvas aria-hidden="true"></canvas>
     <details class="controls" open>
       <summary>ascii ocean</summary>
-      <button id="theme" type="button" aria-label="라이트 모드로 전환" aria-pressed="false">라이트</button>
-      <p>빛과 글자로 만드는 작은 바다</p>
-      <label for="creatures">생물 구성
-        <select id="creatures">
+      <div class="panel-body">
+        <select id="creatures" aria-label="생물 구성">
           <option value="sharks">상어</option>
           <option value="jellyfish">보름달물해파리</option>
           <option value="mixed">상어와 해파리</option>
         </select>
-      </label>
-      <label for="glyphs">글자
-        <select id="glyphs">
-          <option value="ascii">특수문자 · ASCII</option>
-          <option value="hangul">한글 · Hangul</option>
+      <div class="compact-row">
+        <select id="glyphs" aria-label="글자 모드">
+          <option value="ascii">ASCII</option>
+          <option value="hangul">한글</option>
         </select>
-      </label>
-      <label><input id="neon" type="checkbox" /> 생물 네온</label>
-      <label for="neon-colors">네온 색상 · HEX, 쉼표로 구분
-        <input id="neon-colors" type="text" value="#65dfff" spellcheck="false" pattern="\s*#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\s*(?:,\s*#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\s*)*" />
-      </label>
-      <label for="neon-mode">네온 표현
-        <select id="neon-mode">
-          <option value="cycle">부드러운 색상 전환</option>
-          <option value="gradient">생물별 그라데이션</option>
+        <button id="theme" type="button" aria-label="라이트 모드로 전환" aria-pressed="false">[ light ]</button>
+      </div>
+      <label class="switch"><input id="neon" type="checkbox" /> 네온</label>
+      <div class="palette-row">
+        <div id="neon-colors" class="palette" role="group" aria-label="네온 색상"></div>
+        <button id="add-color" type="button" aria-label="네온 색상 추가">[+]</button>
+        <button id="remove-color" type="button" aria-label="마지막 네온 색상 삭제">[-]</button>
+      </div>
+        <select id="neon-mode" aria-label="네온 표현">
+          <option value="cycle">순환</option>
+          <option value="gradient">그라데이션</option>
         </select>
-      </label>
-      <label for="wave-direction">물결 방향
-        <select id="wave-direction">
-          <option value="90">위에서 아래</option>
-          <option value="270">아래에서 위</option>
-          <option value="0">왼쪽에서 오른쪽</option>
-          <option value="180">오른쪽에서 왼쪽</option>
-          <option value="custom">각도 직접 지정</option>
-          <option value="random">물결마다 랜덤</option>
+      <label class="switch"><input id="plankton" type="checkbox" /> 플랑크톤</label>
+      <div class="direction-row">
+        <select id="wave-direction" aria-label="물결 방향">
+          <option value="90">아래</option>
+          <option value="270">위</option>
+          <option value="0">오른쪽</option>
+          <option value="180">왼쪽</option>
+          <option value="custom">직접</option>
+          <option value="random">랜덤</option>
         </select>
-      </label>
-      <label><input id="plankton" type="checkbox" /> 발광 플랑크톤</label>
-      <label for="wave-angle">물결 각도 · 0–360°
-        <input id="wave-angle" type="number" min="0" max="360" step="1" value="90" disabled required />
-      </label>
+        <output id="wave-angle-value" for="wave-angle">90°</output>
+      </div>
+      <input id="wave-angle" type="range" min="0" max="360" step="1" value="90" aria-label="물결 각도" />
       <p id="settings-status" role="status" aria-live="polite"></p>
+      </div>
     </details>
     <script type="module" src="/demo.ts"></script>
   </body>

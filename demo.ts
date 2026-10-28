@@ -11,7 +11,7 @@ theme.addEventListener("click", () => {
   const light = document.documentElement.dataset.theme !== "light";
   engine.setOptions({ theme: light ? "light" : "dark" });
   document.documentElement.dataset.theme = light ? "light" : "dark";
-  theme.textContent = light ? "다크" : "라이트";
+  theme.textContent = light ? "[ dark ]" : "[ light ]";
   theme.setAttribute("aria-label", light ? "다크 모드로 전환" : "라이트 모드로 전환");
   theme.setAttribute("aria-pressed", String(light));
 });
@@ -28,41 +28,72 @@ roster.addEventListener("change", () => {
 });
 const glyphs = document.querySelector<HTMLSelectElement>("#glyphs")!;
 const neon = document.querySelector<HTMLInputElement>("#neon")!;
-const colors = document.querySelector<HTMLInputElement>("#neon-colors")!;
+const colors = document.querySelector<HTMLElement>("#neon-colors")!;
+const addColor = document.querySelector<HTMLButtonElement>("#add-color")!;
+const removeColor = document.querySelector<HTMLButtonElement>("#remove-color")!;
+const palette = ["#65dfff"];
 const neonMode = document.querySelector<HTMLSelectElement>("#neon-mode")!;
 const waveDirection = document.querySelector<HTMLSelectElement>("#wave-direction")!;
 const waveAngle = document.querySelector<HTMLInputElement>("#wave-angle")!;
+const angleValue = document.querySelector<HTMLOutputElement>("#wave-angle-value")!;
 const plankton = document.querySelector<HTMLInputElement>("#plankton")!;
 const status = document.querySelector<HTMLElement>("#settings-status")!;
 function updateAppearance() {
   try {
-    if (waveDirection.value === "custom" && !waveAngle.validity.valid) throw new Error("물결 각도는 0–360°로 입력해 주세요.");
     engine.setOptions({
       glyphs: glyphs.value as GlyphMode,
-      neon: neon.checked ? { colors: colors.value.split(",").map((c) => c.trim()), mode: neonMode.value as "cycle" | "gradient" } : false,
+      neon: neon.checked ? { colors: [...palette], mode: neonMode.value as "cycle" | "gradient" } : false,
       waves: {
         direction: waveDirection.value === "random" ? "random" : waveDirection.value === "custom" ? waveAngle.valueAsNumber : Number(waveDirection.value),
         plankton: plankton.checked,
       },
     });
     status.textContent = "";
-    colors.setAttribute("aria-invalid", "false");
-    waveAngle.setAttribute("aria-invalid", "false");
+    angleValue.value = waveDirection.value === "random" ? "rnd" : `${waveAngle.value}°`;
+    waveAngle.setAttribute("aria-valuetext", `${waveAngle.value}도`);
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : "설정을 확인해 주세요.";
-    colors.setAttribute("aria-invalid", String(neon.checked && !colors.validity.valid));
-    waveAngle.setAttribute("aria-invalid", String(!waveAngle.validity.valid));
   }
 }
+
+function renderPalette() {
+  colors.replaceChildren(...palette.map((color, i) => {
+    const picker = document.createElement("input");
+    picker.type = "color";
+    picker.value = color;
+    picker.title = color;
+    picker.setAttribute("aria-label", `네온 색상 ${i + 1}`);
+    picker.addEventListener("input", () => {
+      palette[i] = picker.value;
+      picker.title = picker.value;
+      updateAppearance();
+    });
+    return picker;
+  }));
+  removeColor.disabled = palette.length === 1;
+}
+renderPalette();
+addColor.addEventListener("click", () => {
+  palette.push(["#65dfff", "#b581ff", "#ff83bf"][palette.length % 3]);
+  renderPalette();
+  updateAppearance();
+});
+removeColor.addEventListener("click", () => {
+  if (palette.length <= 1) return;
+  palette.pop();
+  renderPalette();
+  updateAppearance();
+});
 glyphs.addEventListener("change", updateAppearance);
 neon.addEventListener("change", updateAppearance);
-colors.addEventListener("input", updateAppearance);
 neonMode.addEventListener("change", updateAppearance);
 waveDirection.addEventListener("change", () => {
-  waveAngle.disabled = waveDirection.value !== "custom";
   if (waveDirection.value !== "custom" && waveDirection.value !== "random") waveAngle.value = waveDirection.value;
   updateAppearance();
 });
-waveAngle.addEventListener("input", updateAppearance);
+waveAngle.addEventListener("input", () => {
+  waveDirection.value = "custom";
+  updateAppearance();
+});
 plankton.addEventListener("change", updateAppearance);
 window.addEventListener("pagehide", () => engine.destroy());
