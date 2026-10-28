@@ -8,6 +8,7 @@
  */
 import { clamp, hash3, smoothstep } from "./math";
 import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
+import { bodyGlyph, type OceanOptions } from "./options";
 
 const ALPHA_LEVELS = 6;
 const FISH_ALPHAS = [0.28, 0.42, 0.58, 0.74, 0.9];
@@ -317,7 +318,7 @@ export class AsciiRenderer {
   private fishBuckets: number[][] = FISH_ALPHAS.map(() => []);
   private fishStyles = FISH_ALPHAS.map((a) => `rgba(230,238,255,${a})`);
 
-  constructor(private canvas: HTMLCanvasElement) {
+  constructor(private canvas: HTMLCanvasElement, private options: OceanOptions = {}) {
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) throw new Error("2D canvas unavailable");
     this.ctx = ctx;
@@ -344,6 +345,13 @@ export class AsciiRenderer {
     if (family) this.fontFamily = family;
   }
 
+  setOptions(options: OceanOptions) {
+    if (options.glyphs !== undefined && options.glyphs !== "ascii" && options.glyphs !== "hangul") {
+      throw new Error('glyphs must be "ascii" or "hangul"');
+    }
+    this.options = { ...this.options, ...options };
+  }
+
   resize(width: number, height: number, dpr: number) {
     const prevCols = this.cols;
     const prevRows = this.rows;
@@ -352,6 +360,10 @@ export class AsciiRenderer {
     this.dpr = dpr;
     this.cw = clamp(Math.round(width / 124), 8, 13);
     this.ch = Math.round(this.cw * 1.45);
+    if (this.options.glyphs === "hangul") {
+      this.ctx.font = `600 ${Math.round(this.ch * 0.74)}px ${this.fontFamily}`;
+      this.cw = Math.max(this.cw, Math.ceil(this.ctx.measureText("한").width) + 2);
+    }
     this.cols = Math.ceil(width / this.cw);
     this.rows = Math.ceil(height / this.ch);
 
@@ -801,6 +813,9 @@ export class AsciiRenderer {
         glyph = SKIN_RAMP[clamp(Math.floor((1 - shade) * 8.99) + jitter, 0, SKIN_RAMP.length - 1)];
       }
       level *= dim;
+      if (flag === FLAG_BODY || flag === FLAG_RIDGE || flag === FLAG_MARK) {
+        glyph = bodyGlyph(this.options.glyphs ?? "ascii", glyph, key);
+      }
       // Tinted per species; the classic tint is a cool blue-grey, like a back seen through deep water.
       ctx.fillStyle = `rgb(${Math.min(255, Math.round(level * tr))},${Math.min(255, Math.round(level * tg))},${Math.min(255, Math.round(level * tb + 4))})`;
       ctx.fillRect(x + 1, y + 1, cw - 1, ch - 1);

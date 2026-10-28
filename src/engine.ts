@@ -1,5 +1,6 @@
 import { AsciiRenderer } from "./renderer";
 import { World, type SharkSpec } from "./world";
+import type { OceanOptions } from "./options";
 
 const STEP = 1 / 60;
 const MAX_STEPS = 4;
@@ -20,9 +21,10 @@ export class OceanEngine {
   private intersectionObserver: IntersectionObserver;
   private disposed = false;
 
-  constructor(private canvas: HTMLCanvasElement, sharks?: SharkSpec[]) {
+  constructor(private canvas: HTMLCanvasElement, sharks?: SharkSpec[], options: OceanOptions = {}) {
     this.world = new World(sharks);
     this.renderer = new AsciiRenderer(canvas);
+    this.renderer.setOptions(options);
     this.renderer.setFontFamily(getComputedStyle(canvas).fontFamily);
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -43,7 +45,7 @@ export class OceanEngine {
     this.resize();
     // Canvas text can't trigger a webfont load; once the mono face is in, redraw.
     document.fonts?.load(`600 16px ${getComputedStyle(canvas).fontFamily}`).then(() => {
-      if (!this.disposed && this.reducedMotion.matches) this.drawStill();
+      if (!this.disposed) this.resize();
     });
     this.schedule();
   }
@@ -58,6 +60,13 @@ export class OceanEngine {
     window.removeEventListener("pointerdown", this.onPointerDown);
     document.documentElement.removeEventListener("pointerleave", this.onPointerLeave);
     window.removeEventListener("blur", this.onPointerLeave);
+  }
+
+  /** Update appearance without restarting the simulation. */
+  setOptions(options: OceanOptions) {
+    if (this.disposed) return;
+    this.renderer.setOptions(options);
+    this.resize();
   }
 
   private resize() {
@@ -112,7 +121,7 @@ export class OceanEngine {
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const inside = x >= 0 && y >= 0 && x <= rect.width && y <= rect.height;
+    const inside = e.target === this.canvas && x >= 0 && y >= 0 && x <= rect.width && y <= rect.height;
     return { x, y, inside };
   }
 
