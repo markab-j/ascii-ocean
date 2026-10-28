@@ -1,5 +1,15 @@
 import { TAU } from "./math";
 
+export type WaveDirection = number | "random";
+
+export function normalizeDirection(direction: WaveDirection): WaveDirection {
+  if (direction === "random") return direction;
+  if (typeof direction !== "number" || !Number.isFinite(direction)) {
+    throw new Error('Wave direction must be a finite angle or "random"');
+  }
+  return ((direction % 360) + 360) % 360;
+}
+
 export interface WaveSample {
   crest: number;
   flowX: number;
@@ -25,6 +35,14 @@ export class WaveField {
   private bands: WaveBand[] = [];
   private next = 0;
   private serial = 0;
+  private direction: WaveDirection = 90;
+
+  setDirection(direction: WaveDirection, time: number) {
+    const next = normalizeDirection(direction);
+    if (next === this.direction) return;
+    this.direction = next;
+    this.reset(time);
+  }
 
   resize(width: number, height: number, time: number) {
     if (width === this.width && height === this.height) return;
@@ -41,7 +59,7 @@ export class WaveField {
   }
 
   private spawn(born: number) {
-    const angle = Math.PI / 2;
+    const angle = this.direction === "random" ? Math.random() * TAU : this.direction * Math.PI / 180;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
     this.bands.push({ id: this.serial++, born, dx, dy, span: (Math.abs(dx) * this.width + Math.abs(dy) * this.height) / 2 + 100 });

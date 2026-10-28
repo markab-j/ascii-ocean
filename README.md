@@ -59,4 +59,11 @@ The demo supports `?creatures=jellyfish,hammerhead` and the original `?sharks=..
 
 Moon jellyfish use asymmetric bell pulses, coasting, gradual turns, and damped short tentacles that respond to currents and shared surface waves. This is a lightweight visual simulation, informed by [research on moon-jellyfish swimming](https://pmc.ncbi.nlm.nih.gov/articles/PMC7980403/).
 
+```ts
+engine.setOptions({ waves: { direction: 135 } });
+engine.setOptions({ waves: { direction: "random" } });
+```
+
+Angles are in degrees: 0 right, 90 down, 180 left, 270 up. Random direction is selected once per new wave; a wave keeps its direction while travelling.
+
 MIT

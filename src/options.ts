@@ -1,3 +1,5 @@
+import type { WaveDirection } from "./waves";
+
 export type GlyphMode = "ascii" | "hangul";
 
 export interface NeonOptions {
@@ -11,6 +13,10 @@ export interface OceanOptions {
   glyphs?: GlyphMode;
   /** Disabled by default. Glow follows each creature's silhouette. */
   neon?: false | NeonOptions;
+  waves?: {
+    /** Degrees: 0 right, 90 down, 180 left, 270 up; random per new wave. */
+    direction?: WaveDirection;
+  };
 }
 
 const HANGUL = "가나다라물결바다빛파도한글";

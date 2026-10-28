@@ -41,13 +41,26 @@
       </label>
       <label><input id="neon" type="checkbox" /> 생물 네온</label>
       <label for="neon-colors">네온 색상 · HEX, 쉼표로 구분
-        <input id="neon-colors" type="text" value="#65dfff" spellcheck="false" />
+        <input id="neon-colors" type="text" value="#65dfff" spellcheck="false" pattern="\s*#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\s*(?:,\s*#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\s*)*" />
       </label>
       <label for="neon-mode">네온 표현
         <select id="neon-mode">
           <option value="cycle">부드러운 색상 전환</option>
           <option value="gradient">생물별 그라데이션</option>
         </select>
+      </label>
+      <label for="wave-direction">물결 방향
+        <select id="wave-direction">
+          <option value="90">위에서 아래</option>
+          <option value="270">아래에서 위</option>
+          <option value="0">왼쪽에서 오른쪽</option>
+          <option value="180">오른쪽에서 왼쪽</option>
+          <option value="custom">각도 직접 지정</option>
+          <option value="random">물결마다 랜덤</option>
+        </select>
+      </label>
+      <label for="wave-angle">물결 각도 · 0–360°
+        <input id="wave-angle" type="number" min="0" max="360" step="1" value="90" disabled required />
       </label>
       <p id="settings-status" role="status" aria-live="polite"></p>
     </details>

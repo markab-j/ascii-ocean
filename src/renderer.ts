@@ -11,6 +11,7 @@ import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
 import { bodyGlyph, type OceanOptions } from "./options";
 import { paletteColor, parseColors, type RGB } from "./lighting";
 import type { Jellyfish } from "./jellyfish";
+import { normalizeDirection } from "./waves";
 
 const ALPHA_LEVELS = 6;
 const FISH_ALPHAS = [0.28, 0.42, 0.58, 0.74, 0.9];
@@ -360,6 +361,7 @@ export class AsciiRenderer {
   }
 
   setOptions(options: OceanOptions) {
+    if (options.waves?.direction !== undefined) normalizeDirection(options.waves.direction);
     if (options.glyphs !== undefined && options.glyphs !== "ascii" && options.glyphs !== "hangul") {
       throw new Error('glyphs must be "ascii" or "hangul"');
     }
@@ -371,7 +373,7 @@ export class AsciiRenderer {
     if (options.neon !== undefined) {
       this.neonGradient = palette ? Array.from({ length: 32 }, (_, i) => `rgb(${paletteColor(palette, i / 31).join(",")})`) : [];
     }
-    this.options = { ...this.options, ...options };
+    this.options = { ...this.options, ...options, waves: { ...this.options.waves, ...options.waves } };
   }
 
   resize(width: number, height: number, dpr: number) {

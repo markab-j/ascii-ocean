@@ -1,0 +1,49 @@
+import { expect, test } from "bun:test";
+import { normalizeDirection, WaveField, type WaveSample } from "../src/waves";
+
+const empty = (): WaveSample => ({ crest: 0, flowX: 0, flowY: 0, lift: 0 });
+
+test("directions wrap and reject invalid runtime input", () => {
+  expect(normalizeDirection(-90)).toBe(270);
+  expect(normalizeDirection(450)).toBe(90);
+  expect(normalizeDirection("random")).toBe("random");
+  expect(() => normalizeDirection(NaN)).toThrow();
+  expect(() => normalizeDirection(Infinity)).toThrow();
+});
+
+test("wave flow follows the selected axis and stays continuous", () => {
+  const waves = new WaveField();
+  waves.resize(640, 480, 0);
+  for (const direction of [0, 90, 180, 270]) {
+    waves.setDirection(direction, 0);
+    let totalX = 0;
+    let totalY = 0;
+    let bounded = true;
+    for (let y = 0; y < 480; y += 20) {
+      for (let x = 0; x < 640; x += 20) {
+        const sample = waves.sample(x, y, 0, empty());
+        totalX += Math.abs(sample.flowX);
+        totalY += Math.abs(sample.flowY);
+        bounded &&= sample.crest >= 0 && sample.crest <= 1;
+      }
+    }
+    expect(bounded).toBe(true);
+    expect(direction % 180 === 0 ? totalX : totalY).toBeGreaterThan(1);
+    expect(direction % 180 === 0 ? totalY : totalX).toBeLessThan(1e-8);
+  }
+  const a = waves.sample(300, 200, 1, empty());
+  const b = waves.sample(300, 200, 1.001, empty());
+  expect(Math.abs(a.crest - b.crest)).toBeLessThan(0.01);
+});
+
+test("random wave sampling is stable, and reapplying a direction preserves the field", () => {
+  const waves = new WaveField();
+  waves.resize(800, 600, 0);
+  waves.setDirection("random", 0);
+  const sample = waves.sample(400, 300, 0, empty());
+  expect(waves.sample(400, 300, 0, empty())).toEqual(sample);
+  waves.setDirection("random", 0);
+  expect(waves.sample(400, 300, 0, empty())).toEqual(sample);
+  for (let t = 0; t < 180; t += 0.5) waves.advance(t);
+  expect(Object.values(waves.sample(400, 300, 180, empty())).every(Number.isFinite)).toBe(true);
+});

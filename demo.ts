@@ -21,22 +21,34 @@ const glyphs = document.querySelector<HTMLSelectElement>("#glyphs")!;
 const neon = document.querySelector<HTMLInputElement>("#neon")!;
 const colors = document.querySelector<HTMLInputElement>("#neon-colors")!;
 const neonMode = document.querySelector<HTMLSelectElement>("#neon-mode")!;
+const waveDirection = document.querySelector<HTMLSelectElement>("#wave-direction")!;
+const waveAngle = document.querySelector<HTMLInputElement>("#wave-angle")!;
 const status = document.querySelector<HTMLElement>("#settings-status")!;
 function updateAppearance() {
   try {
+    if (waveDirection.value === "custom" && !waveAngle.validity.valid) throw new Error("물결 각도는 0–360°로 입력해 주세요.");
     engine.setOptions({
       glyphs: glyphs.value as GlyphMode,
       neon: neon.checked ? { colors: colors.value.split(",").map((c) => c.trim()), mode: neonMode.value as "cycle" | "gradient" } : false,
+      waves: { direction: waveDirection.value === "random" ? "random" : waveDirection.value === "custom" ? waveAngle.valueAsNumber : Number(waveDirection.value) },
     });
     status.textContent = "";
     colors.setAttribute("aria-invalid", "false");
+    waveAngle.setAttribute("aria-invalid", "false");
   } catch (error) {
     status.textContent = error instanceof Error ? error.message : "설정을 확인해 주세요.";
-    colors.setAttribute("aria-invalid", "true");
+    colors.setAttribute("aria-invalid", String(neon.checked && !colors.validity.valid));
+    waveAngle.setAttribute("aria-invalid", String(!waveAngle.validity.valid));
   }
 }
 glyphs.addEventListener("change", updateAppearance);
 neon.addEventListener("change", updateAppearance);
 colors.addEventListener("input", updateAppearance);
 neonMode.addEventListener("change", updateAppearance);
+waveDirection.addEventListener("change", () => {
+  waveAngle.disabled = waveDirection.value !== "custom";
+  if (waveDirection.value !== "custom" && waveDirection.value !== "random") waveAngle.value = waveDirection.value;
+  updateAppearance();
+});
+waveAngle.addEventListener("input", updateAppearance);
 window.addEventListener("pagehide", () => engine.destroy());
