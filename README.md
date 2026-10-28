@@ -1,4 +1,4 @@
-# ascii sharks
+# ascii ocean
 
 ```
                             ;'
@@ -21,6 +21,8 @@ t'                            ''XSSS8SSX%XX8#.    %XSX%
 ```
 
 Fish and sharks drawn as ASCII on a canvas. Zero dependencies.
+
+Inspired by [ascii-sharks](https://github.com/stackedlol/ascii-sharks). This project began from a clone of that repository and is being customized as `ascii-ocean`.
 
 Requires Bun 1.4.4 (pinned in `.tool-versions`).
 
