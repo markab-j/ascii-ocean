@@ -27,3 +27,20 @@ test("jellyfish share the roster without acquiring shark hunting behaviour", () 
   expect(() => world.setCreatures([{ kind: "classic", size: -1 }])).toThrow();
   expect(world.jellyfish).toHaveLength(1);
 });
+
+test("tentacle constraints remain bounded during sustained swimming and resize", () => {
+  const world = new World([{ kind: "jellyfish", size: 0.8 }], 0);
+  world.resize(640, 480, 10, 15);
+  for (let i = 0; i < 1800; i++) world.step(1 / 60);
+  world.resize(320, 480, 10, 15);
+  for (let i = 0; i < 600; i++) world.step(1 / 60);
+  const j = world.jellyfish[0];
+  for (let k = 0; k < j.tentacles.length; k++) {
+    const nodes = j.tentacles[k];
+    const segment = j.radius * (0.27 + 0.05 * Math.sin(k * 2.7)) / (nodes.length / 2 - 1);
+    for (let n = 2; n < nodes.length; n += 2) {
+      expect(Math.hypot(nodes[n] - nodes[n - 2], nodes[n + 1] - nodes[n - 1])).toBeLessThan(segment * 1.15);
+    }
+  }
+  expect(Number.isFinite(j.tilt)).toBe(true);
+});

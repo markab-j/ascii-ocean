@@ -904,17 +904,21 @@ export class AsciiRenderer {
     jellyFlag.fill(0);
     for (const j of jellyfish) {
       const radius = j.radius * (1 - j.contraction * 0.18);
+      const cos = Math.cos(j.heading * 0.2);
+      const sin = Math.sin(j.heading * 0.2);
       const c0 = Math.max(0, Math.floor((j.x - radius * 1.1) / cw));
       const c1 = Math.min(cols - 1, Math.ceil((j.x + radius * 1.1) / cw));
       const r0 = Math.max(0, Math.floor((j.y - radius) / ch));
       const r1 = Math.min(rows - 1, Math.ceil((j.y + radius) / ch));
       for (let r = r0; r <= r1; r++) {
         for (let c = c0; c <= c1; c++) {
-          const u = (c * cw + cw / 2 - j.x) / radius;
-          const v = (r * ch + ch / 2 - j.y) / (radius * 0.82);
+          const dx = c * cw + cw / 2 - j.x;
+          const dy = r * ch + ch / 2 - j.y;
+          const u = (dx * cos + dy * sin) / radius;
+          const v = (-dx * sin + dy * cos) / (radius * (0.82 + j.tilt));
           const angle = Math.atan2(v, u);
           const radial = Math.hypot(u, v);
-          const edge = 1 + Math.sin(angle * 16 + j.phase * 0.3) * 0.018;
+          const edge = 1 + Math.sin(angle * 16 + j.phase * 0.3) * 0.018 + Math.sin(angle) * j.turn * 0.08;
           if (radial > edge) continue;
           const i = r * cols + c;
           const ring = Math.abs(Math.hypot(Math.abs(u) - 0.25, Math.abs(v) - 0.25) - 0.145) < Math.max(0.035, cw / radius * 0.3);

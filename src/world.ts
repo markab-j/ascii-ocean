@@ -16,6 +16,7 @@
 import { angleDiff, clamp, current, rand, randInt, TAU } from "./math";
 import { pickSpecies, SPECIES } from "./species";
 import { createJellyfish, stepJellyfish, type Jellyfish } from "./jellyfish";
+import { WaveField } from "./waves";
 
 export const SHARK_NODES = 20;
 
@@ -102,6 +103,7 @@ export class World {
   jellyfish: Jellyfish[] = [];
   events: WorldEvent[] = [];
   pointer = { x: 0, y: 0, active: false };
+  waves = new WaveField();
 
   /** Fish neighbourhood radius; the spatial hash bucket size matches it. */
   private perception = 60;
@@ -143,6 +145,7 @@ export class World {
     const first = this.width === 0;
     this.width = width;
     this.height = height;
+    this.waves.resize(width, height, this.time);
     // Spacing is set in grid cells so every fish lands in its own cell.
     this.sepX = SPECIES.map((sp) => sp.spacing[0] * cellW);
     this.sepY = SPECIES.map((sp) => sp.spacing[1] * cellH);
@@ -205,7 +208,7 @@ export class World {
 
     this.jellyfish = this.creatureSpecs.filter((spec) => spec.kind === "jellyfish").map((spec, i) => {
       const j = createJellyfish(i + 101, rand(W * 0.2, W * 0.8), rand(H * 0.2, H * 0.8), baseLength * spec.size * 0.25, spec.size);
-      stepJellyfish(j, 1 / 60, this.time, W, H);
+      stepJellyfish(j, 1 / 60, this.time, W, H, this.waves);
       return j;
     });
 
@@ -259,10 +262,11 @@ export class World {
 
   step(dt: number) {
     this.time += dt;
+    this.waves.advance(this.time);
     this.rebuildHash();
     this.stepFish(dt);
     this.stepSharks(dt);
-    for (const j of this.jellyfish) stepJellyfish(j, dt, this.time, this.width, this.height);
+    for (const j of this.jellyfish) stepJellyfish(j, dt, this.time, this.width, this.height, this.waves);
     this.respawn();
   }
 

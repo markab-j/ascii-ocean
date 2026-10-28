@@ -57,4 +57,6 @@ const engine = new OceanEngine(canvas, [
 
 The demo supports `?creatures=jellyfish,hammerhead` and the original `?sharks=...` URL. `engine.setCreatures([...])` changes the roster and reseeds the ecosystem.
 
+Moon jellyfish use asymmetric bell pulses, coasting, gradual turns, and damped short tentacles that respond to currents and shared surface waves. This is a lightweight visual simulation, informed by [research on moon-jellyfish swimming](https://pmc.ncbi.nlm.nih.gov/articles/PMC7980403/).
+
 MIT
