@@ -46,4 +46,15 @@ engine.setOptions({ neon: { colors: ["#65dfff", "#b581ff", "#ff83bf"], mode: "gr
 
 The demo's control panel also switches between ASCII and Hangul. Narrow fins, edges, and tiny fish keep ASCII details so the silhouette stays readable.
 
+Mix sharks and moon jellyfish in the same roster:
+
+```ts
+const engine = new OceanEngine(canvas, [
+  { kind: "hammerhead", size: 1 },
+  { kind: "jellyfish", size: 0.8 },
+]);
+```
+
+The demo supports `?creatures=jellyfish,hammerhead` and the original `?sharks=...` URL. `engine.setCreatures([...])` changes the roster and reseeds the ecosystem.
+
 MIT

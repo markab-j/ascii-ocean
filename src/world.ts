@@ -15,10 +15,18 @@
  */
 import { angleDiff, clamp, current, rand, randInt, TAU } from "./math";
 import { pickSpecies, SPECIES } from "./species";
+import { createJellyfish, stepJellyfish, type Jellyfish } from "./jellyfish";
 
 export const SHARK_NODES = 20;
 
-export type SharkKind = "classic" | "hammerhead" | "zebra" | "tiger" | "greathammer" | "mako" | "thresher" | "nurse";
+export const SHARK_KINDS = ["classic", "hammerhead", "zebra", "tiger", "greathammer", "mako", "thresher", "nurse"] as const;
+export type SharkKind = typeof SHARK_KINDS[number];
+export type CreatureKind = SharkKind | "jellyfish";
+export type CreatureSpec = { kind: CreatureKind; size: number };
+
+export function isCreatureKind(value: string): value is CreatureKind {
+  return value === "jellyfish" || (SHARK_KINDS as readonly string[]).includes(value);
+}
 
 /** Which sharks to put in the water; size is relative to the biggest. */
 export type SharkSpec = { kind: SharkKind; size: number };
@@ -91,6 +99,7 @@ export class World {
   time = 0;
   fish: Fish[] = [];
   sharks: Shark[] = [];
+  jellyfish: Jellyfish[] = [];
   events: WorldEvent[] = [];
   pointer = { x: 0, y: 0, active: false };
 
@@ -110,9 +119,25 @@ export class World {
 
   /** fishCount overrides the area-based population (the sidebar wants a single small school). */
   constructor(
-    private sharkSpecs: SharkSpec[] = DEFAULT_SHARKS,
+    private creatureSpecs: CreatureSpec[] = DEFAULT_SHARKS,
     private fishCount?: number,
-  ) {}
+  ) {
+    this.validateCreatures(creatureSpecs);
+  }
+
+  private validateCreatures(creatures: CreatureSpec[]) {
+    for (const spec of creatures) {
+      if (!isCreatureKind(spec.kind) || !Number.isFinite(spec.size) || spec.size <= 0) {
+        throw new Error("Each creature needs a supported kind and a positive finite size");
+      }
+    }
+  }
+
+  setCreatures(creatures: CreatureSpec[] = DEFAULT_SHARKS) {
+    this.validateCreatures(creatures);
+    this.creatureSpecs = creatures;
+    if (this.width > 0 && this.height > 0) this.seed();
+  }
 
   resize(width: number, height: number, cellW: number, cellH: number) {
     const first = this.width === 0;
@@ -138,11 +163,12 @@ export class World {
     const { width: W, height: H } = this;
     const minSide = Math.min(W, H);
     const baseLength = clamp(minSide * 0.44, 170, 430);
-    const sharkCount = this.sharkSpecs.length;
+    const sharkSpecs = this.creatureSpecs.filter((spec): spec is SharkSpec => spec.kind !== "jellyfish");
+    const sharkCount = sharkSpecs.length;
 
     this.sharks = [];
     for (let i = 0; i < sharkCount; i++) {
-      const { kind, size } = this.sharkSpecs[i];
+      const { kind, size } = sharkSpecs[i];
       const length = baseLength * size;
       const orbitRadius = minSide * rand(0.28, 0.4);
       const a = (i / sharkCount) * TAU + rand(-0.4, 0.4);
@@ -176,6 +202,12 @@ export class World {
     }
     // Smaller (farther) sharks draw first so the big one swims over them.
     this.sharks.sort((a, b) => a.length - b.length);
+
+    this.jellyfish = this.creatureSpecs.filter((spec) => spec.kind === "jellyfish").map((spec, i) => {
+      const j = createJellyfish(i + 101, rand(W * 0.2, W * 0.8), rand(H * 0.2, H * 0.8), baseLength * spec.size * 0.25, spec.size);
+      stepJellyfish(j, 1 / 60, this.time, W, H);
+      return j;
+    });
 
     const total = this.fishCount ?? clamp(Math.round((W * H) / 4400), 85, 340);
     this.fish = [];
@@ -230,6 +262,7 @@ export class World {
     this.rebuildHash();
     this.stepFish(dt);
     this.stepSharks(dt);
+    for (const j of this.jellyfish) stepJellyfish(j, dt, this.time, this.width, this.height);
     this.respawn();
   }
 

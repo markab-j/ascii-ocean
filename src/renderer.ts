@@ -10,6 +10,7 @@ import { clamp, hash3, smoothstep } from "./math";
 import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
 import { bodyGlyph, type OceanOptions } from "./options";
 import { paletteColor, parseColors, type RGB } from "./lighting";
+import type { Jellyfish } from "./jellyfish";
 
 const ALPHA_LEVELS = 6;
 const FISH_ALPHAS = [0.28, 0.42, 0.58, 0.74, 0.9];
@@ -301,6 +302,10 @@ export class AsciiRenderer {
   private sharkDepth = new Float32Array(0);
   private sharkKind = new Uint8Array(0);
   private sharkU = new Float32Array(0);
+  private jellyFlag = new Uint8Array(0);
+  private jellyShade = new Float32Array(0);
+  private jellyKey = new Uint32Array(0);
+  private jellyU = new Float32Array(0);
   /** Cells darkened by a shark's shadow on the seabed. */
   private sharkShadow = new Uint8Array(0);
   private spine = new Float32Array(SHARK_NODES * 2);
@@ -407,6 +412,10 @@ export class AsciiRenderer {
       this.sharkDepth = new Float32Array(n);
       this.sharkKind = new Uint8Array(n);
       this.sharkU = new Float32Array(n);
+      this.jellyFlag = new Uint8Array(n);
+      this.jellyShade = new Float32Array(n);
+      this.jellyKey = new Uint32Array(n);
+      this.jellyU = new Float32Array(n);
       this.sharkShadow = new Uint8Array(n);
       this.fishStamp = new Uint32Array(n);
     }
@@ -439,6 +448,7 @@ export class AsciiRenderer {
 
     this.consumeEvents(world);
     this.rasterizeSharks(world.sharks, t);
+    this.rasterizeJellyfish(world.jellyfish);
     this.depositWake(world);
     this.diffuse(dt);
 
@@ -457,6 +467,7 @@ export class AsciiRenderer {
     this.drawHeat();
     this.drawFish();
     this.drawSharks(t);
+    this.drawJellyfish();
   }
 
   // ── simulation → field ──────────────────────────────────────────────
@@ -478,6 +489,12 @@ export class AsciiRenderer {
       g.fillStyle = gradient ? this.neonGradient[16] : cycle;
       g.globalAlpha = 0.12 + b * 0.04;
       for (const i of this.fishBuckets[b]) g.fillRect(i % cols, (i / cols) | 0, 1, 1);
+    }
+    for (let i = 0; i < this.jellyFlag.length; i++) {
+      if (!this.jellyFlag[i]) continue;
+      g.fillStyle = gradient ? this.neonGradient[Math.round(clamp(this.jellyU[i], 0, 1) * 31)] : cycle;
+      g.globalAlpha = this.jellyFlag[i] === 4 ? 0.2 : 0.5;
+      g.fillRect(i % cols, (i / cols) | 0, 1, 1);
     }
     g.globalAlpha = 1;
     ctx.save();
@@ -882,6 +899,72 @@ export class AsciiRenderer {
 
   // ── fish, dots, heat ────────────────────────────────────────────────
 
+  private rasterizeJellyfish(jellyfish: Jellyfish[]) {
+    const { cols, rows, cw, ch, jellyFlag, jellyShade, jellyKey, jellyU } = this;
+    jellyFlag.fill(0);
+    for (const j of jellyfish) {
+      const radius = j.radius * (1 - j.contraction * 0.18);
+      const c0 = Math.max(0, Math.floor((j.x - radius * 1.1) / cw));
+      const c1 = Math.min(cols - 1, Math.ceil((j.x + radius * 1.1) / cw));
+      const r0 = Math.max(0, Math.floor((j.y - radius) / ch));
+      const r1 = Math.min(rows - 1, Math.ceil((j.y + radius) / ch));
+      for (let r = r0; r <= r1; r++) {
+        for (let c = c0; c <= c1; c++) {
+          const u = (c * cw + cw / 2 - j.x) / radius;
+          const v = (r * ch + ch / 2 - j.y) / (radius * 0.82);
+          const angle = Math.atan2(v, u);
+          const radial = Math.hypot(u, v);
+          const edge = 1 + Math.sin(angle * 16 + j.phase * 0.3) * 0.018;
+          if (radial > edge) continue;
+          const i = r * cols + c;
+          const ring = Math.abs(Math.hypot(Math.abs(u) - 0.25, Math.abs(v) - 0.25) - 0.145) < Math.max(0.035, cw / radius * 0.3);
+          jellyFlag[i] = radial > edge - 0.11 ? 2 : ring ? 3 : 1;
+          jellyShade[i] = clamp((0.4 + 0.6 * (1 - radial)) * j.depth, 0.2, 1);
+          jellyKey[i] = (hash3(Math.round(u * 16), Math.round(v * 16), j.id) * 4294967295) >>> 0;
+          jellyU[i] = clamp((u + 1) / 2, 0, 1);
+        }
+      }
+      for (const nodes of j.tentacles) {
+        for (let k = 2; k < nodes.length; k += 2) {
+          const ax = nodes[k - 2];
+          const ay = nodes[k - 1];
+          const dx = nodes[k] - ax;
+          const dy = nodes[k + 1] - ay;
+          const samples = Math.max(1, Math.ceil(Math.hypot(dx / cw, dy / ch) * 2));
+          for (let n = 0; n <= samples; n++) {
+            const i = this.cellIndex(ax + dx * n / samples, ay + dy * n / samples);
+            if (i < 0 || jellyFlag[i]) continue;
+            jellyFlag[i] = 4;
+            jellyShade[i] = (1 - k / (nodes.length * 1.4)) * j.depth;
+            jellyKey[i] = (hash3(k, j.id, 17) * 4294967295) >>> 0;
+            jellyU[i] = k / nodes.length;
+          }
+        }
+      }
+    }
+  }
+
+  private drawJellyfish() {
+    const { ctx, cols, cw, ch, jellyFlag, jellyShade, jellyKey } = this;
+    for (let i = 0; i < jellyFlag.length; i++) {
+      const flag = jellyFlag[i];
+      if (!flag) continue;
+      const x = (i % cols) * cw;
+      const y = ((i / cols) | 0) * ch;
+      const shade = jellyShade[i];
+      const key = jellyKey[i];
+      const glyphs = flag === 4 ? "~:.," : flag === 2 ? "o:;" : flag === 3 ? "oO%" : ".,:;";
+      let glyph = glyphs[key % glyphs.length];
+      if (flag === 1) glyph = bodyGlyph(this.options.glyphs ?? "ascii", glyph, key);
+      if (flag !== 4) {
+        ctx.fillStyle = `rgba(84,174,204,${0.06 + shade * 0.12})`;
+        ctx.fillRect(x + 1, y + 1, cw - 1, ch - 1);
+      }
+      ctx.fillStyle = flag === 3 ? `rgba(207,177,246,${0.6 + shade * 0.3})` : `rgba(158,226,241,${(flag === 2 ? 0.65 : 0.22) + shade * 0.3})`;
+      ctx.fillText(glyph, x + cw / 2, y + ch / 2 + 1);
+    }
+  }
+
   /**
    * Snap each fish to a cell and bucket it by brightness: far fish are dim,
    * near fish brighter, and turning or panicking fish glint. Nearer fish
@@ -895,7 +978,7 @@ export class AsciiRenderer {
       for (const f of world.fish) {
         if (!f.alive || (f.depth > 0.78 ? 0 : 1) !== pass) continue;
         const i = this.cellIndex(f.x, f.y);
-        if (i < 0 || fishStamp[i] === frame || sharkFlag[i]) continue;
+        if (i < 0 || fishStamp[i] === frame || sharkFlag[i] || this.jellyFlag[i]) continue;
         fishStamp[i] = frame;
         const glint = clamp(Math.abs(f.turn) / 3.5, 0, 1);
         const v = 0.3 + (0.4 * (f.depth - 0.55)) / 0.45 + 0.3 * Math.max(glint, f.alarm);
@@ -943,7 +1026,7 @@ export class AsciiRenderer {
     for (let i = 0; i < n; i++) {
       const e = energy[i];
       const kind = dotKind[i];
-      if (sharkFlag[i] || fishStamp[i] === frameId || (kind === 0 && e < 0.45)) {
+      if (sharkFlag[i] || this.jellyFlag[i] || fishStamp[i] === frameId || (kind === 0 && e < 0.45)) {
         bucketOf[i] = SKIP;
         continue;
       }

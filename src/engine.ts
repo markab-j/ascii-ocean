@@ -1,5 +1,5 @@
 import { AsciiRenderer } from "./renderer";
-import { World, type SharkSpec } from "./world";
+import { World, type CreatureSpec } from "./world";
 import type { OceanOptions } from "./options";
 
 const STEP = 1 / 60;
@@ -21,8 +21,8 @@ export class OceanEngine {
   private intersectionObserver: IntersectionObserver;
   private disposed = false;
 
-  constructor(private canvas: HTMLCanvasElement, sharks?: SharkSpec[], options: OceanOptions = {}) {
-    this.world = new World(sharks);
+  constructor(private canvas: HTMLCanvasElement, creatures?: CreatureSpec[], options: OceanOptions = {}) {
+    this.world = new World(creatures);
     this.renderer = new AsciiRenderer(canvas);
     this.renderer.setOptions(options);
     this.renderer.setFontFamily(getComputedStyle(canvas).fontFamily);
@@ -67,6 +67,13 @@ export class OceanEngine {
     if (this.disposed) return;
     this.renderer.setOptions(options);
     this.resize();
+  }
+
+  /** Changing the roster reseeds the ecosystem; appearance changes do not. */
+  setCreatures(creatures?: CreatureSpec[]) {
+    if (this.disposed) return;
+    this.world.setCreatures(creatures);
+    if (this.reducedMotion.matches) this.drawStill();
   }
 
   private resize() {
