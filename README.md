@@ -73,4 +73,36 @@ engine.setOptions({ waves: { plankton: false } });
 
 Blue bioluminescent plankton flash in patches as the crests pass, with a short afterglow inspired by *Noctiluca scintillans*. The plankton and creature-neon switches are independent and off by default.
 
+Passing crests also cast a soft blue reflection on sharks, jellyfish, and tiny fish, while keeping their glyphs legible. Jellyfish motion and the light sample the same wave field. The effect is inspired by [flow-stimulated dinoflagellate bioluminescence](https://latzlab.ucsd.edu/bioluminescence/dinoflagellates/dinoflagellate-bioluminescence/).
+
+Complete configuration:
+
+```ts
+const engine = new OceanEngine(canvas, [
+  { kind: "hammerhead", size: 1 },
+  { kind: "jellyfish", size: 0.8 },
+], {
+  glyphs: "hangul",
+  neon: { colors: ["#65dfff", "#b581ff"], mode: "gradient" },
+  waves: { direction: "random", plankton: true },
+});
+```
+
+The optional React adapter is available from `./src/react`:
+
+```tsx
+<AsciiOcean
+  creatures={[{ kind: "jellyfish", size: 1 }]}
+  options={{ glyphs: "hangul", waves: { direction: 135, plankton: true } }}
+/>
+```
+
+The original `sharks` prop remains supported. Live `options` updates preserve the simulation; changing `creatures` reseeds it. Call `engine.destroy()` when removing a canvas. Off-screen canvases pause, and `prefers-reduced-motion` displays a still scene.
+
+```sh
+bun test
+bun run typecheck
+bun run build
+```
+
 MIT

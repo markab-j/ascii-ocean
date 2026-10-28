@@ -309,6 +309,7 @@ export class AsciiRenderer {
   private jellyKey = new Uint32Array(0);
   private jellyU = new Float32Array(0);
   private plankton = new Float32Array(0);
+  private surfaceLight = new Float32Array(0);
   private waveSample: WaveSample = { crest: 0, flowX: 0, flowY: 0, lift: 0 };
   /** Cells darkened by a shark's shadow on the seabed. */
   private sharkShadow = new Uint8Array(0);
@@ -422,6 +423,7 @@ export class AsciiRenderer {
       this.jellyKey = new Uint32Array(n);
       this.jellyU = new Float32Array(n);
       this.plankton = new Float32Array(n);
+      this.surfaceLight = new Float32Array(n);
       this.sharkShadow = new Uint8Array(n);
       this.fishStamp = new Uint32Array(n);
     }
@@ -476,6 +478,7 @@ export class AsciiRenderer {
     this.drawFish();
     this.drawSharks(t);
     this.drawJellyfish();
+    this.drawSurfaceReflections();
   }
 
   // ── simulation → field ──────────────────────────────────────────────
@@ -483,6 +486,7 @@ export class AsciiRenderer {
   private updatePlankton(world: World, dt: number) {
     if (!this.options.waves?.plankton) {
       this.plankton.fill(0);
+      this.surfaceLight.fill(0);
       return;
     }
     for (let i = 0; i < this.plankton.length; i++) {
@@ -490,6 +494,7 @@ export class AsciiRenderer {
       const row = (i / this.cols) | 0;
       const sample = world.waves.sample((col + 0.5) * this.cw, (row + 0.5) * this.ch, world.time, this.waveSample);
       this.plankton[i] = planktonLight(this.plankton[i], sample.crest, col, row, world.time, dt);
+      this.surfaceLight[i] = Math.max(this.surfaceLight[i] * Math.exp(-dt * 4), sample.crest * (0.6 + hash3(col >> 2, row >> 2, 57) * 0.4));
     }
   }
 
@@ -516,6 +521,28 @@ export class AsciiRenderer {
       ctx.fillStyle = `rgba(99,216,255,${(light * 0.8).toFixed(2)})`;
       ctx.fillText(light > 0.68 ? "*" : light > 0.35 ? ":" : "·", (i % cols + 0.5) * cw, (((i / cols) | 0) + 0.5) * ch + 1);
     }
+  }
+
+  private drawSurfaceReflections() {
+    if (!this.options.waves?.plankton) return;
+    const { ctx, cols, cw, ch } = this;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = "#69dfff";
+    for (let i = 0; i < this.surfaceLight.length; i++) {
+      const light = this.surfaceLight[i];
+      if (light < 0.02) continue;
+      const x = (i % cols) * cw;
+      const y = ((i / cols) | 0) * ch;
+      if (this.sharkFlag[i] || this.jellyFlag[i]) {
+        ctx.globalAlpha = light * (this.jellyFlag[i] ? 0.13 : 0.1);
+        ctx.fillRect(x + 1, y + 1, cw - 1, ch - 1);
+      } else if (this.fishStamp[i] === this.frameId) {
+        ctx.globalAlpha = light * 0.35;
+        ctx.fillRect(x + cw * 0.25, y + ch * 0.5, cw * 0.5, 1);
+      }
+    }
+    ctx.restore();
   }
 
   private drawNeon(t: number) {
@@ -967,8 +994,10 @@ export class AsciiRenderer {
           const edge = 1 + Math.sin(angle * 16 + j.phase * 0.3) * 0.018 + Math.sin(angle) * j.turn * 0.08;
           if (radial > edge) continue;
           const i = r * cols + c;
-          const ring = Math.abs(Math.hypot(Math.abs(u) - 0.25, Math.abs(v) - 0.25) - 0.145) < Math.max(0.035, cw / radius * 0.3);
-          jellyFlag[i] = radial > edge - 0.11 ? 2 : ring ? 3 : 1;
+          const markDistance = Math.hypot(Math.abs(u) - 0.32, Math.abs(v) - 0.32);
+          const ring = Math.abs(markDistance - 0.155) < Math.max(0.045, cw / radius * 0.35);
+          // Quiet space around the four gonads keeps Hangul from obscuring their shapes.
+          jellyFlag[i] = radial > edge - 0.11 ? 2 : ring ? 3 : markDistance < 0.26 ? 5 : 1;
           jellyShade[i] = clamp((0.4 + 0.6 * (1 - radial)) * j.depth, 0.2, 1);
           jellyKey[i] = (hash3(Math.round(u * 16), Math.round(v * 16), j.id) * 4294967295) >>> 0;
           jellyU[i] = clamp((u + 1) / 2, 0, 1);
@@ -986,7 +1015,7 @@ export class AsciiRenderer {
             if (i < 0 || jellyFlag[i]) continue;
             jellyFlag[i] = 4;
             jellyShade[i] = (1 - k / (nodes.length * 1.4)) * j.depth;
-            jellyKey[i] = (hash3(k, j.id, 17) * 4294967295) >>> 0;
+            jellyKey[i] = Math.abs(dx) > Math.abs(dy) * 2 ? 0 : Math.abs(dy) > Math.abs(dx) * 2 ? 1 : dx * dy < 0 ? 2 : 3;
             jellyU[i] = k / nodes.length;
           }
         }
@@ -1003,14 +1032,15 @@ export class AsciiRenderer {
       const y = ((i / cols) | 0) * ch;
       const shade = jellyShade[i];
       const key = jellyKey[i];
-      const glyphs = flag === 4 ? "~:.," : flag === 2 ? "o:;" : flag === 3 ? "oO%" : ".,:;";
+      if (flag === 5) continue;
+      const glyphs = flag === 4 ? "~|/\\" : flag === 2 ? "o:;" : flag === 3 ? "o" : ".,:;";
       let glyph = glyphs[key % glyphs.length];
       if (flag === 1) glyph = bodyGlyph(this.options.glyphs ?? "ascii", glyph, key);
       if (flag !== 4) {
         ctx.fillStyle = `rgba(84,174,204,${0.06 + shade * 0.12})`;
         ctx.fillRect(x + 1, y + 1, cw - 1, ch - 1);
       }
-      ctx.fillStyle = flag === 3 ? `rgba(207,177,246,${0.6 + shade * 0.3})` : `rgba(158,226,241,${(flag === 2 ? 0.65 : 0.22) + shade * 0.3})`;
+      ctx.fillStyle = flag === 3 ? "#f2d6ff" : `rgba(158,226,241,${(flag === 2 ? 0.65 : flag === 4 ? 0.4 : 0.22) + shade * 0.3})`;
       ctx.fillText(glyph, x + cw / 2, y + ch / 2 + 1);
     }
   }

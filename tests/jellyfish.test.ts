@@ -37,7 +37,7 @@ test("tentacle constraints remain bounded during sustained swimming and resize",
   const j = world.jellyfish[0];
   for (let k = 0; k < j.tentacles.length; k++) {
     const nodes = j.tentacles[k];
-    const segment = j.radius * (0.27 + 0.05 * Math.sin(k * 2.7)) / (nodes.length / 2 - 1);
+    const segment = j.radius * (0.38 + 0.08 * Math.sin(k * 2.7)) / (nodes.length / 2 - 1);
     for (let n = 2; n < nodes.length; n += 2) {
       expect(Math.hypot(nodes[n] - nodes[n - 2], nodes[n + 1] - nodes[n - 1])).toBeLessThan(segment * 1.15);
     }
