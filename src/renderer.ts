@@ -4,7 +4,7 @@
  *   2. a wake field that diffuses where things swim, lighting the dots cyan
  *   3. fish as minimal ASCII dashes, one per cell, glinting on hard turns
  *   4. sharks rasterised cell-by-cell with supersampled edges: grey blocks
- *      shaded by the light, dense glyphs, and shimmering accent colours
+ *      shaded by the light, dense glyphs, and stable text colours
  */
 import { clamp, hash3, smoothstep } from "./math";
 import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
@@ -446,7 +446,7 @@ export class AsciiRenderer {
     for (let i = 0; i < n; i++) {
       const col = i % this.cols;
       const row = (i / this.cols) | 0;
-      // No ambient dots: the grid stays black. Only the cyan wake lights cells.
+      // No ambient dots: only the cyan wake lights otherwise empty cells.
       this.dotKind[i] = 0;
       this.dotPhase[i] = hash3(col, row, 23) * Math.PI * 2;
       this.dotFreq[i] = 0.3 + hash3(col, row, 37) * 1.1;
