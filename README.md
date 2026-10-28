@@ -38,6 +38,8 @@ const engine = new OceanEngine(canvas, [{ kind: "hammerhead", size: 1 }]);
 
 // Appearance can change without restarting the simulation.
 engine.setOptions({ glyphs: "hangul" }); // "ascii" (default) or "hangul"
+engine.setOptions({ neon: { colors: "#65dfff" } }); // #RGB or #RRGGBB
+engine.setOptions({ neon: false }); // off by default
 ```
 
 The demo's control panel also switches between ASCII and Hangul. Narrow fins, edges, and tiny fish keep ASCII details so the silhouette stays readable.

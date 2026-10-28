@@ -6,5 +6,23 @@ const sharks: SharkSpec[] | undefined = kinds?.map((kind, i) => ({ kind, size: 1
 
 const engine = new OceanEngine(document.querySelector("canvas")!, sharks);
 const glyphs = document.querySelector<HTMLSelectElement>("#glyphs")!;
-glyphs.addEventListener("change", () => engine.setOptions({ glyphs: glyphs.value as GlyphMode }));
+const neon = document.querySelector<HTMLInputElement>("#neon")!;
+const colors = document.querySelector<HTMLInputElement>("#neon-colors")!;
+const status = document.querySelector<HTMLElement>("#settings-status")!;
+function updateAppearance() {
+  try {
+    engine.setOptions({
+      glyphs: glyphs.value as GlyphMode,
+      neon: neon.checked ? { colors: colors.value.trim() } : false,
+    });
+    status.textContent = "";
+    colors.setAttribute("aria-invalid", "false");
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "설정을 확인해 주세요.";
+    colors.setAttribute("aria-invalid", "true");
+  }
+}
+glyphs.addEventListener("change", updateAppearance);
+neon.addEventListener("change", updateAppearance);
+colors.addEventListener("input", updateAppearance);
 window.addEventListener("pagehide", () => engine.destroy());

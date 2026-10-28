@@ -9,6 +9,7 @@
 import { clamp, hash3, smoothstep } from "./math";
 import { SHARK_NODES, type Shark, type SharkKind, type World } from "./world";
 import { bodyGlyph, type OceanOptions } from "./options";
+import { parseHex, type RGB } from "./lighting";
 
 const ALPHA_LEVELS = 6;
 const FISH_ALPHAS = [0.28, 0.42, 0.58, 0.74, 0.9];
@@ -270,6 +271,9 @@ export function paintGrid(g: CanvasRenderingContext2D, W: number, H: number, cw:
 export class AsciiRenderer {
   private ctx: CanvasRenderingContext2D;
   private bg: HTMLCanvasElement;
+  private glow: HTMLCanvasElement;
+  private glowCtx: CanvasRenderingContext2D;
+  private neonColor: RGB | null = null;
   private dpr = 1;
   private width = 0;
   private height = 0;
@@ -323,6 +327,9 @@ export class AsciiRenderer {
     if (!ctx) throw new Error("2D canvas unavailable");
     this.ctx = ctx;
     this.bg = document.createElement("canvas");
+    this.glow = document.createElement("canvas");
+    this.glowCtx = this.glow.getContext("2d")!;
+    this.setOptions(options);
 
     for (let c = 0; c < DOT_RGB.length; c++) {
       const [r, g, b] = DOT_RGB[c];
@@ -349,6 +356,8 @@ export class AsciiRenderer {
     if (options.glyphs !== undefined && options.glyphs !== "ascii" && options.glyphs !== "hangul") {
       throw new Error('glyphs must be "ascii" or "hangul"');
     }
+    const neonColor = options.neon === undefined ? this.neonColor : options.neon === false ? null : parseHex(options.neon.colors);
+    this.neonColor = neonColor;
     this.options = { ...this.options, ...options };
   }
 
@@ -371,6 +380,8 @@ export class AsciiRenderer {
     this.canvas.height = Math.round(height * dpr);
     this.bg.width = this.canvas.width;
     this.bg.height = this.canvas.height;
+    this.glow.width = this.cols;
+    this.glow.height = this.rows;
 
     const n = this.cols * this.rows;
     if (this.cols !== prevCols || this.rows !== prevRows) {
@@ -427,6 +438,7 @@ export class AsciiRenderer {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     this.markFish(world);
+    this.drawNeon();
     this.drawDots(t);
 
     ctx.font = `600 ${Math.round(ch * 0.74)}px ${this.fontFamily}`;
@@ -439,6 +451,29 @@ export class AsciiRenderer {
   }
 
   // ── simulation → field ──────────────────────────────────────────────
+
+  private drawNeon() {
+    if (!this.neonColor) return;
+    const { glowCtx: g, cols, rows, cw, ch, ctx } = this;
+    g.clearRect(0, 0, cols, rows);
+    g.fillStyle = `rgb(${this.neonColor.join(",")})`;
+    for (let i = 0; i < this.sharkFlag.length; i++) {
+      if (!this.sharkFlag[i]) continue;
+      g.globalAlpha = (0.35 + 0.4 * this.sharkDepth[i]) * (this.sharkFlag[i] === FLAG_EDGE ? 0.4 : 1);
+      g.fillRect(i % cols, (i / cols) | 0, 1, 1);
+    }
+    for (let b = 0; b < this.fishBuckets.length; b++) {
+      g.globalAlpha = 0.12 + b * 0.04;
+      for (const i of this.fishBuckets[b]) g.fillRect(i % cols, (i / cols) | 0, 1, 1);
+    }
+    g.globalAlpha = 1;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = 0.5;
+    ctx.filter = `blur(${Math.round(cw * 1.3)}px)`;
+    ctx.drawImage(this.glow, 0, 0, cols * cw, rows * ch);
+    ctx.restore();
+  }
 
   private cellIndex(x: number, y: number) {
     const c = Math.floor(x / this.cw);
